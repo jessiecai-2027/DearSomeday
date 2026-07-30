@@ -145,7 +145,12 @@ protocol TrustedTimeStore: AnyObject {
 /// The production `TrustedTimeStore`: a couple of `UserDefaults` keys. Tiny,
 /// non-secret data — this is a diary lock (§5.4 proportionality), so there's no
 /// call for the Keychain or attestation here.
-final class UserDefaultsTrustedTimeStore: TrustedTimeStore {
+// `nonisolated`: this type only shuttles values in and out of the thread-safe
+// `UserDefaults`, touches no main-actor state, and is constructed as
+// `TrustedClock.init`'s default argument (evaluated in a nonisolated context).
+// Opting the whole type out of the module's default MainActor isolation keeps
+// that construction warning-free without scattering `nonisolated` per member.
+nonisolated final class UserDefaultsTrustedTimeStore: TrustedTimeStore {
 
     private enum Key {
         static let lastTrustedTime = "trustedTime.lastTrustedTime"
@@ -194,28 +199,34 @@ final class UserDefaultsTrustedTimeStore: TrustedTimeStore {
 /// back a value it controls, and *lowering* it between calls is how a test
 /// simulates the reboot it can't actually perform.
 ///
-/// There is deliberately no wall-clock source here. The projection never needs
-/// one — `serverNow` is authoritative and always arrives from outside, passed
-/// explicitly to `sync(serverNow:)` (the §5.4 HTTPS Date header, once the
-/// networking step lands). Keeping the device clock out of this type entirely
-/// means there is no seam a caller could accidentally wire `Date()` into.
+/// There is deliberately no device wall-clock source here. The projection never
+/// needs one — `serverNow` is authoritative and always arrives from outside: the
+/// §5.4 HTTPS `Date` header, fetched by the injected `server` and handed to
+/// `sync(serverNow:)`. Keeping the device clock out of this type entirely means
+/// there is no seam a caller could accidentally wire `Date()` into.
 @MainActor
 final class TrustedClock {
 
     private let store: TrustedTimeStore
     private let uptime: () -> TimeInterval
+    private let server: ServerClock
 
     /// - Parameters:
     ///   - store: where the anchor persists. Defaults to `UserDefaults`.
     ///   - uptime: reads the monotonic system uptime. **No default** — the
     ///     caller states the source explicitly so the injection seam is never
     ///     bypassed by accident.
+    ///   - server: the trusted server-instant source for `syncFromServer()`.
+    ///     Defaults to the hardcoded-endpoint `HTTPServerClock`; tests inject a
+    ///     fake so the calculation can be driven without a network.
     init(
         store: TrustedTimeStore = UserDefaultsTrustedTimeStore(),
-        uptime: @escaping () -> TimeInterval
+        uptime: @escaping () -> TimeInterval,
+        server: ServerClock = HTTPServerClock()
     ) {
         self.store = store
         self.uptime = uptime
+        self.server = server
     }
 
     /// The current trusted instant, or `.neverSynced` if no server instant has
@@ -249,4 +260,98 @@ final class TrustedClock {
         store.lastSync = fresh
         return .trusted(TrustedTimeCalculator.project(fresh, currentUptime: sampledUptime))
     }
+
+    /// Fetches the current instant from `server` and records it via
+    /// `sync(serverNow:)` — the whole §5.4 "on launch/foreground" sync.
+    ///
+    /// **Never blocks launch, never surfaces an error.** It is `async`, so the
+    /// caller fires it into a detached `Task` and lets launch proceed; the
+    /// network round-trip suspends rather than blocks. And it cannot throw — any
+    /// failure (offline, DNS/TLS error, missing or unparseable `Date` header)
+    /// comes back from `server` as `nil` and is swallowed here, leaving the last
+    /// known anchor exactly as it was. A failed sync is not an error state to
+    /// show; it is simply "no new information" (§5.4: the card just stays in its
+    /// quiet waiting state).
+    ///
+    /// The `Date` header carries **second precision only** — its grammar has no
+    /// sub-second field — so the recorded instant sits on a whole-second
+    /// boundary. That sub-second slack is meaningless against a lock measured in
+    /// days; noted, not fought.
+    ///
+    /// - Returns: trusted time after the attempt — the freshly synced value on
+    ///   success, or the unchanged last-known value (possibly `.neverSynced`) on
+    ///   failure. Discardable for the fire-and-forget launch path.
+    @discardableResult
+    func syncFromServer() async -> TrustedTime {
+        guard let serverNow = await server.currentInstant() else {
+            return now()            // fetch failed → last known values stay put
+        }
+        return sync(serverNow: serverNow)
+    }
+}
+
+// MARK: - Server time source
+
+/// The transport seam for obtaining a trusted server instant, so
+/// `TrustedClock.syncFromServer()` can be driven by a fake in tests while
+/// production uses `HTTPServerClock`.
+protocol ServerClock {
+    /// The current instant per a trusted server, or `nil` if it could not be
+    /// obtained (offline, transport error, missing/unparseable `Date` header).
+    /// Unavailability is `nil`, never a thrown error — the caller has nothing to
+    /// react to but "no new time".
+    func currentInstant() async -> Date?
+}
+
+/// Reads the current instant from an HTTPS server's `Date` response header
+/// (§5.4) via a lightweight `HEAD` request — we want the header, not a body.
+/// Any well-run HTTPS host stamps a `Date` (RFC 9110 §5.6.7 IMF-fixdate), so
+/// this needs no dedicated time API.
+// `nonisolated`: a networking type that touches no main-actor state and is
+// constructed as `TrustedClock.init`'s default argument. Being nonisolated also
+// lets `currentInstant()` run off the main actor, so the HEAD request never
+// borrows the main thread. Same reasoning as `UserDefaultsTrustedTimeStore`.
+nonisolated final class HTTPServerClock: ServerClock {
+
+    /// Hardcoded HTTPS endpoint. Not a time service — just a reliable host whose
+    /// response carries a `Date` header. HTTPS so the header isn't trivially
+    /// rewritable in transit, which is all the assurance a diary lock warrants
+    /// (§5.4 proportionality).
+    static let defaultEndpoint = URL(string: "https://www.apple.com/")!
+
+    private let endpoint: URL
+    private let session: URLSession
+
+    init(endpoint: URL = HTTPServerClock.defaultEndpoint, session: URLSession = .shared) {
+        self.endpoint = endpoint
+        self.session = session
+    }
+
+    func currentInstant() async -> Date? {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "HEAD"                          // headers only, no body
+        request.cachePolicy = .reloadIgnoringLocalCacheData  // a cached hit would carry a stale Date
+
+        guard
+            let (_, response) = try? await session.data(for: request),
+            let http = response as? HTTPURLResponse,
+            let dateHeader = http.value(forHTTPHeaderField: "Date"),
+            let instant = Self.httpDateFormatter.date(from: dateHeader)
+        else {
+            return nil                                       // any failure → unavailable, never thrown
+        }
+        return instant
+    }
+
+    /// RFC 9110 IMF-fixdate parser: `Sun, 06 Nov 1994 08:49:37 GMT`. Pinned to a
+    /// POSIX locale and GMT so the device's locale/timezone can't skew parsing.
+    /// The grammar stops at whole seconds, so the parsed instant is
+    /// second-precise by construction — see the note on `syncFromServer()`.
+    private static let httpDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "GMT")
+        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        return f
+    }()
 }
