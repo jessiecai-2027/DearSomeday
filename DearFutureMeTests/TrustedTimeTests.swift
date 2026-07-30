@@ -27,14 +27,12 @@ struct TrustedTimeTests {
     private let hour: TimeInterval = 3_600
 
     /// A clock whose uptime is read from a mutable box, so a test can advance it
-    /// (time passing) or lower it (reboot) between calls. `wallClock` is left as
-    /// a controllable closure too, though `now()` never consults it.
+    /// (time passing) or lower it (reboot) between calls.
     private func makeClock(
         store: TrustedTimeStore = InMemoryTrustedTimeStore(),
-        uptime: @escaping () -> TimeInterval,
-        wallClock: @escaping () -> Date = { Date(timeIntervalSinceReferenceDate: 0) }
+        uptime: @escaping () -> TimeInterval
     ) -> TrustedClock {
-        TrustedClock(store: store, uptime: uptime, wallClock: wallClock)
+        TrustedClock(store: store, uptime: uptime)
     }
 
     // MARK: - Pure calculation
@@ -64,12 +62,9 @@ struct TrustedTimeTests {
     // MARK: - Two outcomes
 
     @Test func beforeAnySyncTimeIsNeverSynced() {
-        // Even though wallClock returns a real instant, now() must NOT fall back
-        // to it — the only honest answer with no server anchor is neverSynced.
-        let clock = makeClock(
-            uptime: { 1_000 },
-            wallClock: { self.serverNow }
-        )
+        // With no server anchor, the only honest answer is neverSynced — there
+        // is no device-clock fallback to return instead.
+        let clock = makeClock(uptime: { 1_000 })
         #expect(clock.now() == .neverSynced)
     }
 

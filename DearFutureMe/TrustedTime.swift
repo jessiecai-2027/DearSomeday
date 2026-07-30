@@ -185,49 +185,37 @@ final class UserDefaultsTrustedTimeStore: TrustedTimeStore {
 
 // MARK: - Coordinator
 
-/// Ties the pure calculation to its injected runtime sources and its persisted
+/// Ties the pure calculation to its injected runtime source and its persisted
 /// anchor. This is what the rest of the app talks to: `now()` to read trusted
 /// time, `sync(serverNow:)` when a server instant arrives.
 ///
-/// Both runtime inputs are injected (§5.4, and see the file header on
-/// testability):
+/// The only injected runtime input is `uptime` — the monotonic clock.
+/// Production wires `{ ProcessInfo.processInfo.systemUptime }`; a test hands
+/// back a value it controls, and *lowering* it between calls is how a test
+/// simulates the reboot it can't actually perform.
 ///
-///  • `uptime` — the monotonic clock. Production wires
-///    `{ ProcessInfo.processInfo.systemUptime }`; a test hands back a value it
-///    controls, and *lowering* it between calls is how a test simulates the
-///    reboot it can't actually perform.
-///
-///  • `wallClock` — the trusted wall-clock SOURCE for the no-argument `sync()`.
-///    This MUST be a server-derived instant (the §5.4 HTTPS Date header),
-///    **never `Date()`** — wiring the device clock here would reintroduce the
-///    exact spoofable value this whole layer exists to avoid. Until the
-///    networking step lands there is no such source, so production does not call
-///    the no-arg `sync()` yet; the networking layer will either supply this
-///    closure or call `sync(serverNow:)` with the header value directly.
+/// There is deliberately no wall-clock source here. The projection never needs
+/// one — `serverNow` is authoritative and always arrives from outside, passed
+/// explicitly to `sync(serverNow:)` (the §5.4 HTTPS Date header, once the
+/// networking step lands). Keeping the device clock out of this type entirely
+/// means there is no seam a caller could accidentally wire `Date()` into.
 @MainActor
 final class TrustedClock {
 
     private let store: TrustedTimeStore
     private let uptime: () -> TimeInterval
-    private let wallClock: () -> Date
 
     /// - Parameters:
     ///   - store: where the anchor persists. Defaults to `UserDefaults`.
     ///   - uptime: reads the monotonic system uptime. **No default** — the
     ///     caller states the source explicitly so the injection seam is never
     ///     bypassed by accident.
-    ///   - wallClock: the trusted (server-derived) wall-clock source for the
-    ///     no-arg `sync()`. **No default, and never `Date()`** — see the type
-    ///     doc. Deliberately un-defaulted so nobody wires the device clock in
-    ///     without meaning to.
     init(
         store: TrustedTimeStore = UserDefaultsTrustedTimeStore(),
-        uptime: @escaping () -> TimeInterval,
-        wallClock: @escaping () -> Date
+        uptime: @escaping () -> TimeInterval
     ) {
         self.store = store
         self.uptime = uptime
-        self.wallClock = wallClock
     }
 
     /// The current trusted instant, or `.neverSynced` if no server instant has
@@ -260,14 +248,5 @@ final class TrustedClock {
         let fresh = TrustedTimeSync(lastTrustedTime: serverNow, uptimeAtSync: sampledUptime)
         store.lastSync = fresh
         return .trusted(TrustedTimeCalculator.project(fresh, currentUptime: sampledUptime))
-    }
-
-    /// Convenience: sync using the injected `wallClock` as `serverNow`. Only
-    /// valid once `wallClock` is wired to a trusted server-derived source (the
-    /// networking step) — see the type doc. Same monotonic guarantee as
-    /// `sync(serverNow:)`.
-    @discardableResult
-    func sync() -> TrustedTime {
-        sync(serverNow: wallClock())
     }
 }
