@@ -12,11 +12,12 @@
 //  ── Why the manifest state has no `draft` case ────────────────────────────
 //  §6.1's *domain* model is `draft | sealed | unlocked`. §6.2's *manifest*
 //  is explicitly `sealed | unlocked`. A draft is a work-in-progress that lives
-//  only in local storage; it is never exported. Rather than model `draft` here
-//  and reject it at runtime, `ManifestState` simply omits it — an unexportable
-//  draft is unrepresentable, so the "don't export a draft" rule is enforced by
-//  the type system, not a guard clause. I think this split is correct and have
-//  kept it; I did not add a third state.
+//  only in the composer's memory — it never persists (the store rejects drafts;
+//  see `PostcardStore.create`) and so is never exported. Rather than model
+//  `draft` here and reject it at runtime, `ManifestState` simply omits it — an
+//  unexportable draft is unrepresentable, so the "don't export a draft" rule is
+//  enforced by the type system, not a guard clause. This split is correct and
+//  kept; no third state was added.
 //
 //  ── Date strategy: ISO-8601, whole-second ─────────────────────────────────
 //  §6.2 spells the timestamps "ISO-8601", so we use `JSONEn/Decoder`'s
