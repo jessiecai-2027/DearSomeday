@@ -124,6 +124,34 @@ struct PostcardLifecycle {
         return true
     }
 
+    // MARK: - Edit window (§5.3.3)
+
+    /// Whether the card may currently be edited, per the §5.3.3 window and the
+    /// **trusted** clock — `trustedNow < editableUntil`, where `editableUntil`
+    /// is the `min(createdAt + 1 week, unlockDate)` set at `seal`.
+    ///
+    /// This answers only for `sealed` cards — the only state with a live window.
+    /// It returns `false` for:
+    ///  • `draft`: a draft has no sealed window (its `editableUntil` is nil) and
+    ///    is edited directly in the composer, not gated through here.
+    ///  • `unlocked`: terminal and permanently readable (§5.3.5) — never edited.
+    ///  • a `sealed` card with no `editableUntil` (the §5.3 invariant the schema
+    ///    can't enforce; treat the absent window as closed rather than crash).
+    ///  • `.neverSynced`: no trusted time to place "now" in the window, and §5.4
+    ///    forbids the device clock — so the window can't be confirmed open, and
+    ///    we err closed. Not a Date() fallback.
+    ///
+    /// The bound is strict: at the instant the window ends the card is no longer
+    /// editable. When the window was truncated to `unlockDate`, that same instant
+    /// is when `unlockIfDue` fires — so a card is never editable at the moment it
+    /// unlocks.
+    func isEditable(_ postcard: Postcard) -> Bool {
+        guard postcard.state == .sealed else { return false }
+        guard let editableUntil = postcard.editableUntil else { return false }
+        guard case .trusted(let now) = clock.now() else { return false }
+        return now < editableUntil
+    }
+
     // MARK: - Errors
 
     /// Why a `seal` was rejected. `Equatable` so tests can assert the exact

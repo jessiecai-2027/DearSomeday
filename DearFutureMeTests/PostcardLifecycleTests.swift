@@ -179,4 +179,54 @@ struct PostcardLifecycleTests {
         #expect(lifecycle(trustedNow: t0).unlockIfDue(card) == false)
         #expect(card.state == .draft)
     }
+
+    // MARK: - Edit window (§5.3.3)
+
+    @Test func sealedCardEditableInsideWindowNotOutside() throws {
+        // Unlock a year out → window is the full week from creation.
+        let card = draft(createdAt: t0)
+        try lifecycle(trustedNow: t0).seal(card, unlockDate: t0.addingTimeInterval(365 * day))
+
+        // Day 3: inside the week → editable.
+        #expect(lifecycle(trustedNow: t0.addingTimeInterval(3 * day)).isEditable(card) == true)
+        // Exactly one week: window has ended (strict bound) → not editable.
+        #expect(lifecycle(trustedNow: t0.addingTimeInterval(week)).isEditable(card) == false)
+        // Past the week → not editable.
+        #expect(lifecycle(trustedNow: t0.addingTimeInterval(8 * day)).isEditable(card) == false)
+    }
+
+    @Test func editWindowHonoursUnlockTruncation() throws {
+        // Unlock in 3 days → window truncates to 3 days.
+        let card = draft(createdAt: t0)
+        try lifecycle(trustedNow: t0).seal(card, unlockDate: t0.addingTimeInterval(3 * day))
+
+        #expect(lifecycle(trustedNow: t0.addingTimeInterval(2 * day)).isEditable(card) == true)
+        // At the unlock instant the truncated window closes and the card unlocks
+        // — never editable at the moment it unlocks.
+        #expect(lifecycle(trustedNow: t0.addingTimeInterval(3 * day)).isEditable(card) == false)
+    }
+
+    @Test func notEditableWhenTrustedTimeUnavailable() throws {
+        let card = draft(createdAt: t0)
+        try lifecycle(trustedNow: t0).seal(card, unlockDate: t0.addingTimeInterval(30 * day))
+
+        // Well inside the window in device terms, but no trusted anchor to
+        // confirm it → err closed.
+        #expect(neverSyncedLifecycle().isEditable(card) == false)
+    }
+
+    @Test func draftAndUnlockedAreNotEditable() throws {
+        // A draft has no sealed window.
+        let draftCard = draft(createdAt: t0)
+        #expect(lifecycle(trustedNow: t0).isEditable(draftCard) == false)
+
+        // Unlocked is terminal → never editable.
+        let unlockDate = t0.addingTimeInterval(day)
+        let card = draft(createdAt: t0)
+        try lifecycle(trustedNow: t0).seal(card, unlockDate: unlockDate)
+        let atUnlock = lifecycle(trustedNow: unlockDate)
+        atUnlock.unlockIfDue(card)
+        #expect(card.state == .unlocked)
+        #expect(atUnlock.isEditable(card) == false)
+    }
 }
