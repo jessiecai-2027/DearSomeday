@@ -38,12 +38,12 @@
 //  `create` is where a conformer must reject or dedupe a colliding id, and
 //  `postcard(withID:)` assumes at most one match. The type system won't help.
 //
-//  ── Known gap, flagged not filled ──────────────────────────────────────────
-//  §5.7 ("re-scan all sealed cards and re-schedule on every launch") needs an
-//  unpaginated fetch of every sealed card, which the timeline's 50-item pages
-//  don't provide. That's a real future requirement but outside the five
-//  operations this task asked for; add `sealedPostcards()` when wiring
-//  notifications (build-order step 8), not here.
+//  ── §5.7 unpaginated sealed fetch ──────────────────────────────────────────
+//  §5.7 ("re-scan all sealed cards and re-schedule on every launch") needs
+//  every sealed card, not a 50-item timeline page — and the launch/foreground
+//  unlock sweep (§5.4) needs the same set. `sealedPostcards()` provides it. It
+//  was deferred in an earlier pass; the ugly core loop pulls §5.7 into scope,
+//  so it lives here now.
 
 import Foundation
 
@@ -110,6 +110,22 @@ protocol PostcardStore {
     ///     default arguments, so it isn't defaulted here).
     /// - Returns: up to `limit` postcards in timeline order; fewer at the end.
     func timeline(offset: Int, limit: Int) async throws -> [Postcard]
+
+    // MARK: - Fetch (all sealed — §5.7)
+
+    /// Every card currently in the `sealed` state, unpaginated.
+    ///
+    /// Serves two launch/foreground jobs the paginated `timeline` can't:
+    ///  • the §5.4 unlock sweep — evaluate every sealed card against trusted
+    ///    time and unlock those that are due;
+    ///  • §5.7 notification re-scheduling — "re-scan all sealed cards and
+    ///    re-schedule on every launch", since an uninstall wipes the pending
+    ///    queue.
+    ///
+    /// Both need the *whole* set, so this is deliberately not paged. Drafts and
+    /// unlocked cards are excluded. Order is unspecified — callers iterate the
+    /// full set rather than depending on position.
+    func sealedPostcards() async throws -> [Postcard]
 
     // MARK: - Update
 

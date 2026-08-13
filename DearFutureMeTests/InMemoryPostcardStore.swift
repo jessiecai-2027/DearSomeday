@@ -57,13 +57,19 @@ final class InMemoryPostcardStore: PostcardStore {
         // out of storage, but filter defensively so an update-to-draft can't
         // leak one in.
         let visible = storage.values.filter { $0.state != .draft }
-        let ordered = visible.sorted(by: Self.timelineOrder)
+        let ordered = visible.sorted(by: PostcardTimelineSort.precedes)
 
         // Crash-safe slice for any offset/limit, including out-of-range or
         // negative values (which are misuse, but shouldn't trap).
         let start = min(max(0, offset), ordered.count)
         let end = min(start + max(0, limit), ordered.count)
         return Array(ordered[start..<end])
+    }
+
+    // MARK: - Fetch (all sealed — §5.7)
+
+    func sealedPostcards() async throws -> [Postcard] {
+        storage.values.filter { $0.state == .sealed }
     }
 
     // MARK: - Update
@@ -85,38 +91,8 @@ final class InMemoryPostcardStore: PostcardStore {
     }
 
     // MARK: - §5.5 ordering
-
-    /// Total order matching §5.5: sealed group first (soonest unlock at top),
-    /// then unlocked group (most recent first). Deterministic tiebreakers make
-    /// it a *total* order so offset pagination can't skip or duplicate rows.
-    private static func timelineOrder(_ a: Postcard, _ b: Postcard) -> Bool {
-        // 1. Sealed cards precede unlocked cards.
-        if (a.state == .sealed) != (b.state == .sealed) {
-            return a.state == .sealed
-        }
-
-        // Sealed → unlockDate ascending; unlocked → descending.
-        let ascending = (a.state == .sealed)
-
-        // 2. By unlockDate, with nils sorted last within the group. (A sealed
-        //    card with a nil unlockDate violates the §5.3 invariant the schema
-        //    can't enforce; we sort it last rather than crash.)
-        switch (a.unlockDate, b.unlockDate) {
-        case let (ua?, ub?) where ua != ub:
-            return ascending ? (ua < ub) : (ua > ub)
-        case (nil, .some):
-            return false            // a (nil) sorts after b
-        case (.some, nil):
-            return true             // a sorts before b (nil)
-        default:
-            break                   // both nil, or equal instants → tiebreak
-        }
-
-        // 3. Tiebreakers for a total order: createdAt (same direction as the
-        //    group), then id as the final deterministic key.
-        if a.createdAt != b.createdAt {
-            return ascending ? (a.createdAt < b.createdAt) : (a.createdAt > b.createdAt)
-        }
-        return a.id.uuidString < b.id.uuidString
-    }
+    //
+    // The §5.5 total order lives in `PostcardTimelineSort` (app target) so this
+    // double and the SwiftData store sort identically — a test passing here
+    // exercises the real ordering, not a divergent copy.
 }
