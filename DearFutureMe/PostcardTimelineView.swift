@@ -20,6 +20,7 @@ struct PostcardTimelineView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var cards: [Postcard] = []
     @State private var isBusy = false
+    @State private var showComposer = false
 
     var body: some View {
         NavigationStack {
@@ -33,16 +34,25 @@ struct PostcardTimelineView: View {
                 }
             }
             .navigationTitle("Postcards")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showComposer = true } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("New postcard")
+                }
+            }
             #if DEBUG
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Sweep") { Task { await sweepAndReload() } }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Seed 20s") { Task { await seedDebugCard() } }
                 }
             }
             #endif
+        }
+        .sheet(isPresented: $showComposer, onDismiss: { Task { await reload() } }) {
+            ComposerView(services: services)
         }
         // Fires on launch; the scenePhase handler covers every later foreground.
         .task { await sweepAndReload() }
