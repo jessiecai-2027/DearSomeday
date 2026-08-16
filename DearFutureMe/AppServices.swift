@@ -13,6 +13,7 @@
 
 import Foundation
 import SwiftData
+import UserNotifications
 
 @MainActor
 final class AppServices {
@@ -22,16 +23,29 @@ final class AppServices {
     let clock: TrustedClock
     let lifecycle: PostcardLifecycle
     let coordinator: UnlockCoordinator
+    let notificationScheduler: NotificationScheduler
+    let notificationRouter: NotificationRouter
+
+    /// Retained so it stays alive as the notification-center delegate (the
+    /// center holds it weakly).
+    private let notificationDelegate: NotificationDelegate
 
     init(container: ModelContainer) throws {
         let clock = TrustedClock(uptime: { ProcessInfo.processInfo.systemUptime })
         let store = SwiftDataPostcardStore(container: container)
         let lifecycle = PostcardLifecycle(clock: clock)
 
+        let router = NotificationRouter()
+        let delegate = NotificationDelegate(router: router)
+        UNUserNotificationCenter.current().delegate = delegate
+
         self.clock = clock
         self.store = store
         self.photoStore = try FileSystemPhotoStore.applicationSupport()
         self.lifecycle = lifecycle
         self.coordinator = UnlockCoordinator(store: store, lifecycle: lifecycle, clock: clock)
+        self.notificationScheduler = NotificationScheduler()
+        self.notificationRouter = router
+        self.notificationDelegate = delegate
     }
 }

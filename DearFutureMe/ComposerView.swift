@@ -32,6 +32,10 @@ struct ComposerView: View {
 
     let services: AppServices
 
+    /// Called on a successful seal, before dismissal — the timeline uses it to
+    /// trigger the first-seal notification priming (§7.1).
+    var onSealed: (() -> Void)? = nil
+
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
@@ -254,6 +258,7 @@ struct ComposerView: View {
             try services.lifecycle.seal(draft, unlockDate: unlockDate)
             try await services.store.create(draft)
             committed = true            // keep the photo bytes; skip onDisappear cleanup
+            onSealed?()
             dismiss()
         } catch let error as PostcardLifecycle.SealError {
             errorMessage = ComposerLogic.sealErrorCopy(error)
