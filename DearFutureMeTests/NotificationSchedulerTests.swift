@@ -3,10 +3,10 @@
 //  DearFutureMeTests
 //
 //  Covers the pure, authorization-free parts of §5.7: the per-card notification
-//  request — title-only content, stable identifier, and a 9:00am-local-on-the-
-//  unlock-day trigger — and the guards that produce no request when there's
-//  nothing to remind about. Constructing UN* objects needs no permission, so
-//  this runs without prompting.
+//  request — title-only content, stable identifier, and a trigger that fires at
+//  the unlock instant (the chosen local date and time) — and the guards that
+//  produce no request when there's nothing to remind about. Constructing UN*
+//  objects needs no permission, so this runs without prompting.
 //
 
 import Testing
@@ -48,31 +48,30 @@ struct NotificationSchedulerTests {
 
     // MARK: - Trigger timing
 
-    @Test func triggerIsNineAMLocalOnTheUnlockDay() throws {
+    @Test func triggerFollowsTheUnlockInstant() throws {
         let cal = calendar("America/New_York")
-        let unlock = cal.date(from: DateComponents(year: 2026, month: 9, day: 1, hour: 9))!
+        let unlock = cal.date(from: DateComponents(year: 2026, month: 9, day: 1, hour: 14, minute: 30))!
         let card = Postcard(title: "x", unlockDate: unlock, state: .sealed)
 
         let request = try #require(NotificationScheduler.makeRequest(for: card, calendar: cal))
         let trigger = try #require(request.trigger as? UNCalendarNotificationTrigger)
 
-        #expect(trigger.dateComponents.hour == 9)
-        #expect(trigger.dateComponents.minute == 0)
         #expect(trigger.dateComponents.year == 2026)
         #expect(trigger.dateComponents.month == 9)
         #expect(trigger.dateComponents.day == 1)
+        #expect(trigger.dateComponents.hour == 14)
+        #expect(trigger.dateComponents.minute == 30)
         #expect(trigger.repeats == false)
     }
 
-    @Test func triggerForcesNineAMEvenIfTheUnlockInstantIsNot() {
-        // Defends the §5.7 rule directly: any time-of-day on the unlock date
-        // still yields a 9:00 trigger.
+    @Test func triggerComponentsMirrorTheUnlockTimeAcrossZones() {
+        // The trigger fires at the chosen local date+time — no forcing to 9am.
         let cal = calendar("Asia/Tokyo")
         let unlock = cal.date(from: DateComponents(year: 2027, month: 3, day: 14, hour: 15, minute: 30))!
 
         let components = NotificationScheduler.triggerComponents(unlockDate: unlock, calendar: cal)
 
-        #expect(components.hour == 9 && components.minute == 0)
+        #expect(components.hour == 15 && components.minute == 30)
         #expect(components.year == 2027 && components.month == 3 && components.day == 14)
     }
 

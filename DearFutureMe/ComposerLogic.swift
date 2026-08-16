@@ -4,7 +4,7 @@
 //
 //  The composer's pure, testable core — the two bits of logic worth pinning
 //  down with unit tests, kept out of the SwiftUI view (which, per §8, gets no
-//  UI tests). The limits, the "9:00am local on the chosen day" rule, and the
+//  UI tests). The limits, the "chosen local date and time" unlock rule, and the
 //  seal-error copy live here.
 //
 
@@ -17,19 +17,15 @@ enum ComposerLogic {
     static let maxMessageLength = 2_000
     static let maxPhotos = 10
 
-    /// The unlock instant for a chosen day: **09:00 local time** on that
-    /// calendar day (task-C / §5.7: notifications deliver at 9am in the user's
-    /// current zone, so the unlock instant and the notification align). A `Date`
-    /// is an absolute instant, so this is stored UTC automatically (§5.3) — the
-    /// 9am is interpreted in `calendar.timeZone` at construction and frozen.
-    ///
-    /// Only the day of `date` is used; its time-of-day is discarded. `calendar`
-    /// is injected so the rule is testable across time zones and DST.
-    static func unlockInstant(onDayOf date: Date, calendar: Calendar) -> Date {
-        var components = calendar.dateComponents([.year, .month, .day], from: date)
-        components.hour = 9
-        components.minute = 0
-        components.second = 0
+    /// The unlock instant from the composer's date **and time** picker: the
+    /// chosen local date and time, normalised to minute precision (seconds and
+    /// sub-seconds dropped — the picker exposes only hour+minute, and
+    /// notifications are minute-granular). A `Date` is an absolute instant, so
+    /// this is stored UTC automatically (§5.3); the wall-clock components are
+    /// interpreted in `calendar.timeZone` and frozen. `calendar` is injected so
+    /// the rule is testable across time zones and DST.
+    static func unlockInstant(from date: Date, calendar: Calendar) -> Date {
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         return calendar.date(from: components) ?? date
     }
 

@@ -459,7 +459,7 @@ private struct NotificationPrimingView: View {
             Text("We’ll tell you when this opens")
                 .font(.headline)
                 .multilineTextAlignment(.center)
-            Text("Turn on notifications and we’ll remind you at 9am on the day your postcard unlocks.")
+            Text("Turn on notifications and we’ll remind you when your postcard unlocks.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             Button("Turn on notifications") { onEnable() }

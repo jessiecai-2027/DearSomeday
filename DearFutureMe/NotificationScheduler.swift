@@ -4,7 +4,8 @@
 //
 //  Local unlock notifications (§5.7). Three collaborators:
 //   • NotificationScheduler — requests permission, and (re)schedules one local
-//     notification per sealed card at 9:00am local on its unlock day.
+//     notification per sealed card at its unlock instant (the chosen local
+//     date and time).
 //   • NotificationRouter    — a tiny observable the delegate writes a tapped
 //     card id into; the timeline consumes it and routes to the display view.
 //   • NotificationDelegate  — receives taps and foreground presentations.
@@ -86,13 +87,12 @@ final class NotificationScheduler {
     /// Fixed, content-free body — no photos, no message (§5.4).
     static let notificationBody = "It’s ready to open."
 
-    /// 9:00am local on the unlock day (§5.7). Rebuilt each reschedule, so a
-    /// timezone change since sealing is picked up on the next launch.
+    /// The unlock instant's wall-clock components (minute precision) in the given
+    /// zone, so the notification fires at the chosen local date and time (§5.7).
+    /// Rebuilt each reschedule, so a timezone change since sealing is picked up
+    /// on the next launch.
     static func triggerComponents(unlockDate: Date, calendar: Calendar) -> DateComponents {
-        var components = calendar.dateComponents([.year, .month, .day], from: unlockDate)
-        components.hour = 9
-        components.minute = 0
-        return components
+        calendar.dateComponents([.year, .month, .day, .hour, .minute], from: unlockDate)
     }
 
     /// A request for a sealed card, or nil if there's nothing to remind about

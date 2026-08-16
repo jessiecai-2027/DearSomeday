@@ -40,7 +40,7 @@ struct ComposerView: View {
 
     @State private var title = ""
     @State private var message = ""
-    @State private var chosenDate = ComposerView.defaultDay()
+    @State private var chosenDate = ComposerView.defaultUnlockDate()
 
     @State private var pendingPhotos: [PendingPhoto] = []
     @State private var addedIdentifiers: Set<String> = []
@@ -187,9 +187,9 @@ struct ComposerView: View {
 
     private var dateSection: some View {
         Section {
-            DatePicker("Unlock date", selection: $chosenDate, in: Date()..., displayedComponents: .date)
+            DatePicker("Unlock", selection: $chosenDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
         } footer: {
-            Text("Opens at 9:00am on the day you choose.")
+            Text("Opens on the date and time you choose.")
         }
     }
 
@@ -242,7 +242,7 @@ struct ComposerView: View {
             return
         }
 
-        let unlockDate = ComposerLogic.unlockInstant(onDayOf: chosenDate, calendar: .current)
+        let unlockDate = ComposerLogic.unlockInstant(from: chosenDate, calendar: .current)
         let storedPhotos = pendingPhotos.enumerated().map { index, photo in
             StoredPhoto(order: index, fileName: photo.fileName)
         }
@@ -269,10 +269,12 @@ struct ComposerView: View {
 
     // MARK: - Helpers
 
-    /// Default the picker to tomorrow — the nearest day whose 9am is reliably in
-    /// the future regardless of the current time of day.
-    private static func defaultDay() -> Date {
-        Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+    /// Default the picker to tomorrow at 9:00am — a friendly starting point
+    /// that's reliably in the future regardless of the current time of day.
+    private static func defaultUnlockDate() -> Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        return calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
     }
 
     private struct PendingPhoto: Identifiable {
