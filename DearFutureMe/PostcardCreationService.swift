@@ -17,6 +17,7 @@ struct CreationPhoto: Identifiable {
     var aspect: CGFloat
     var thumbnail: UIImage?
     var sourceIdentifier: String?
+    var sourceFingerprint: String?
 }
 
 struct PostcardCreationInput {
@@ -57,7 +58,11 @@ final class PostcardCreationService {
         self.clock = clock
     }
 
-    func importPhoto(_ image: UIImage, sourceIdentifier: String? = nil) throws -> CreationPhoto {
+    func importPhoto(
+        _ image: UIImage,
+        sourceIdentifier: String? = nil,
+        sourceFingerprint: String? = nil
+    ) throws -> CreationPhoto {
         let saved = try photoStore.saveDerivative(image)
         let thumb = photoStore.loadData(fileName: saved.fileName).flatMap(UIImage.init(data:))
         return CreationPhoto(
@@ -65,7 +70,8 @@ final class PostcardCreationService {
             fileName: saved.fileName,
             aspect: saved.aspect,
             thumbnail: thumb,
-            sourceIdentifier: sourceIdentifier
+            sourceIdentifier: sourceIdentifier,
+            sourceFingerprint: sourceFingerprint
         )
     }
 

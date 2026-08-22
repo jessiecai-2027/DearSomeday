@@ -26,6 +26,7 @@ struct ComposerView: View {
     @State private var step: Step = .photos
     @State private var photos: [CreationPhoto] = []
     @State private var addedIdentifiers: Set<String> = []
+    @State private var addedFingerprints: Set<String> = []
     @State private var pickerItems: [PhotosPickerItem] = []
 
     @State private var selectedTemplate: CardTemplate?
@@ -491,12 +492,27 @@ struct ComposerView: View {
                 let data = try? await item.loadTransferable(type: Data.self),
                 let image = UIImage(data: data)
             else { continue }
+            let fingerprint = PhotoSelectionLogic.fingerprint(for: data)
+            guard PhotoSelectionLogic.canAdd(
+                fingerprint: fingerprint,
+                selectedFingerprints: addedFingerprints
+            ) else {
+                continue
+            }
             do {
-                let photo = try services.creationService.importPhoto(image, sourceIdentifier: identifier)
+                let photo = try services.creationService.importPhoto(
+                    image,
+                    sourceIdentifier: identifier,
+                    sourceFingerprint: fingerprint
+                )
                 photos.append(photo)
                 addedIdentifiers = PhotoSelectionLogic.identifiers(
                     afterAdding: identifier,
                     to: addedIdentifiers
+                )
+                addedFingerprints = PhotoSelectionLogic.fingerprints(
+                    afterAdding: fingerprint,
+                    to: addedFingerprints
                 )
             } catch {
                 errorMessage = "Couldn’t add one of those photos."
@@ -512,6 +528,10 @@ struct ComposerView: View {
         addedIdentifiers = PhotoSelectionLogic.identifiers(
             afterRemoving: photo.sourceIdentifier,
             from: addedIdentifiers
+        )
+        addedFingerprints = PhotoSelectionLogic.fingerprints(
+            afterRemoving: photo.sourceFingerprint,
+            from: addedFingerprints
         )
         assignments.removeAll { $0.photoID == photo.id }
         ensureTemplateSelection()

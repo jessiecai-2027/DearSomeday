@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 enum PhotoSelectionLogic {
 
@@ -25,6 +26,27 @@ enum PhotoSelectionLogic {
         guard let identifier else { return selectedIdentifiers }
         var next = selectedIdentifiers
         next.remove(identifier)
+        return next
+    }
+
+    static func fingerprint(for data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func canAdd(fingerprint: String, selectedFingerprints: Set<String>) -> Bool {
+        !selectedFingerprints.contains(fingerprint)
+    }
+
+    static func fingerprints(afterAdding fingerprint: String, to selectedFingerprints: Set<String>) -> Set<String> {
+        var next = selectedFingerprints
+        next.insert(fingerprint)
+        return next
+    }
+
+    static func fingerprints(afterRemoving fingerprint: String?, from selectedFingerprints: Set<String>) -> Set<String> {
+        guard let fingerprint else { return selectedFingerprints }
+        var next = selectedFingerprints
+        next.remove(fingerprint)
         return next
     }
 }

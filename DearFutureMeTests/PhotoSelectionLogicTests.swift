@@ -4,6 +4,7 @@
 //
 
 import Testing
+import Foundation
 @testable import DearFutureMe
 
 struct PhotoSelectionLogicTests {
@@ -31,6 +32,28 @@ struct PhotoSelectionLogicTests {
 
         #expect(!removed.contains("asset-1"))
         #expect(PhotoSelectionLogic.canAdd(identifier: "asset-1", selectedIdentifiers: removed))
+    }
+
+    @Test func duplicateFingerprintsAreSkipped() {
+        let fingerprint = PhotoSelectionLogic.fingerprint(for: Data([1, 2, 3]))
+        let selected = PhotoSelectionLogic.fingerprints(afterAdding: fingerprint, to: [])
+
+        #expect(!PhotoSelectionLogic.canAdd(
+            fingerprint: fingerprint,
+            selectedFingerprints: selected
+        ))
+    }
+
+    @Test func removingPhotoReleasesFingerprint() {
+        let fingerprint = PhotoSelectionLogic.fingerprint(for: Data([1, 2, 3]))
+        let selected = PhotoSelectionLogic.fingerprints(afterAdding: fingerprint, to: [])
+        let removed = PhotoSelectionLogic.fingerprints(afterRemoving: fingerprint, from: selected)
+
+        #expect(!removed.contains(fingerprint))
+        #expect(PhotoSelectionLogic.canAdd(
+            fingerprint: fingerprint,
+            selectedFingerprints: removed
+        ))
     }
 
     @Test func selectedIdentifierInsertionKeepsExistingIdentifiers() {
