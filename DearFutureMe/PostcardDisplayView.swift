@@ -91,8 +91,15 @@ struct PostcardDisplayView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                if !card.message.isEmpty {
-                    Text(card.message)
+                let displayMessage = card.backText.isEmpty ? card.message : card.backText
+                if !displayMessage.isEmpty {
+                    Text(displayMessage)
+                }
+
+                if let location = card.locationLabel, !location.isEmpty {
+                    Text(location)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 if let date = card.unlockDate {

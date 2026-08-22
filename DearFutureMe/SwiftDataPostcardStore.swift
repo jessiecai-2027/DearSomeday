@@ -51,8 +51,19 @@ final class SwiftDataPostcardStore: PostcardStore {
     /// is why the CloudKit-legality rules in Models.swift matter from commit one.
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
         let schema = Schema([Postcard.self, DesignPreset.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
-        return try ModelContainer(for: schema, configurations: [configuration])
+        if inMemory {
+            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            return try ModelContainer(for: schema, configurations: [configuration])
+        }
+
+        let storeURL = try localStoreURL()
+        let configuration = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
+        do {
+            return try ModelContainer(for: schema, configurations: [configuration])
+        } catch {
+            try quarantineStore(at: storeURL)
+            return try ModelContainer(for: schema, configurations: [configuration])
+        }
     }
 
     // MARK: - Create
@@ -154,11 +165,55 @@ final class SwiftDataPostcardStore: PostcardStore {
         destination.title = source.title
         destination.message = source.message
         destination.photos = source.photos
+        destination.templateId = source.templateId
+        destination.slotAssignments = source.slotAssignments
+        destination.backText = source.backText
+        destination.backFontId = source.backFontId
+        destination.backTextColorHex = source.backTextColorHex
+        destination.locationLabel = source.locationLabel
+        destination.animationMetadata = source.animationMetadata
         destination.createdAt = source.createdAt
         destination.unlockDate = source.unlockDate
         destination.editableUntil = source.editableUntil
         destination.state = source.state
         destination.substrateId = source.substrateId
         destination.decorationElements = source.decorationElements
+    }
+
+    private static func localStoreURL() throws -> URL {
+        let base = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = base.appendingPathComponent("Stores", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("DearFutureMe.store")
+    }
+
+    /// Development-stage schema changes can make SwiftData refuse to open the
+    /// local store before the app reaches any screen. Move the incompatible
+    /// SQLite files aside and retry with an empty local store. This preserves
+    /// the old files for manual recovery while keeping the MVP usable.
+    private static func quarantineStore(at storeURL: URL) throws {
+        let fileManager = FileManager.default
+        let candidates = [
+            storeURL,
+            URL(fileURLWithPath: storeURL.path + "-shm"),
+            URL(fileURLWithPath: storeURL.path + "-wal"),
+        ]
+        guard candidates.contains(where: { fileManager.fileExists(atPath: $0.path) }) else { return }
+
+        let quarantineDirectory = storeURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("IncompatibleStores", isDirectory: true)
+            .appendingPathComponent(String(Int(Date().timeIntervalSince1970)), isDirectory: true)
+        try fileManager.createDirectory(at: quarantineDirectory, withIntermediateDirectories: true)
+
+        for file in candidates where fileManager.fileExists(atPath: file.path) {
+            let destination = quarantineDirectory.appendingPathComponent(file.lastPathComponent)
+            try? fileManager.moveItem(at: file, to: destination)
+        }
     }
 }

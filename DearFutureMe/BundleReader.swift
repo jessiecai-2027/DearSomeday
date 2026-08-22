@@ -43,7 +43,7 @@ enum BundleReadError: Error, Equatable {
     case duplicateOrder(Int)
     /// Two photos reference the same `file`.
     case duplicateFileReference(String)
-    /// More than the §5.1 maximum of 10 photos.
+    /// More than the creation maximum of 6 photos.
     case tooManyPhotos(Int)
 }
 
@@ -62,7 +62,7 @@ struct LoadedPhoto: Equatable {
 enum BundleReader {
 
     /// §5.1 photo cap. Zero photos (text-only cards) are permitted.
-    static let maxPhotos = 10
+    static let maxPhotos = 6
 
     static func read(at bundleURL: URL) throws -> LoadedBundle {
         let fileManager = FileManager.default

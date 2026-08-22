@@ -22,6 +22,11 @@ struct ComposerLogicTests {
 
     // MARK: - Chosen date+time unlock instant
 
+    @Test func photoLimitsAreOneThroughSix() {
+        #expect(ComposerLogic.minPhotos == 1)
+        #expect(ComposerLogic.maxPhotos == 6)
+    }
+
     @Test func unlockInstantPreservesTheChosenLocalDateAndTime() {
         let cal = calendar("America/New_York")
         let chosen = cal.date(from: DateComponents(year: 2026, month: 8, day: 20, hour: 15, minute: 42))!

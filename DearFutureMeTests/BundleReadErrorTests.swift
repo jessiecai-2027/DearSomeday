@@ -185,13 +185,13 @@ struct BundleReadErrorTests {
         assertRejects(bundle, with: .duplicateFileReference("photos/01.jpg"))
     }
 
-    // MARK: - 9. more than 10 photos (§5.1)
+    // MARK: - 9. more than 6 photos
 
     @Test func tooManyPhotosIsRejected() throws {
         let bundle = try makeBundleDir()
-        let photos = (0..<11).map { photo(String(format: "photos/%02d.jpg", $0 + 1), $0) }
+        let photos = (0..<7).map { photo(String(format: "photos/%02d.jpg", $0 + 1), $0) }
         try writeManifest(baseManifest(photos: photos), to: bundle)
-        try writePhotoFiles((0..<11).map { String(format: "%02d.jpg", $0 + 1) }, to: bundle)
-        assertRejects(bundle, with: .tooManyPhotos(11))
+        try writePhotoFiles((0..<7).map { String(format: "%02d.jpg", $0 + 1) }, to: bundle)
+        assertRejects(bundle, with: .tooManyPhotos(7))
     }
 }

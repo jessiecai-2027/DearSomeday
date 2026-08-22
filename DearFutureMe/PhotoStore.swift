@@ -9,8 +9,7 @@
 //  ── What it stores (§6.1 + task-C decision) ────────────────────────────────
 //  Display-resolution derivatives only — originals are NOT retained (§6.1).
 //  Each imported image is:
-//    1. auto center-cropped to 4:5 portrait (task-C decision — no crop UI in
-//       the ugly loop, but data and display must already be correct),
+//    1. normalised for orientation,
 //    2. downscaled so its longest edge ≤ 2048px (§6.1),
 //    3. encoded JPEG at quality 0.8 (§6.1).
 //
@@ -34,11 +33,15 @@ import UIKit
 
 protocol PhotoStore {
 
-    /// Processes `image` into a 4:5 / ≤2048px / q0.8 JPEG derivative, writes it,
-    /// and returns the opaque `fileName` handle to record on
+    /// Processes `image` into an aspect-preserving ≤2048px / q0.8 JPEG
+    /// derivative, writes it, and returns the opaque `fileName` handle to record on
     /// `StoredPhoto.fileName`. Throws if the image can't be processed or the
     /// write fails (e.g. storage full, §7.2).
     func save(_ image: UIImage) throws -> String
+
+    /// Same write path as `save`, but returns geometry metadata the template
+    /// composer needs for ranking and crop transforms.
+    func saveDerivative(_ image: UIImage) throws -> SavedPhotoDerivative
 
     /// The stored JPEG bytes for a handle, or nil if absent/unreadable.
     func loadData(fileName: String) -> Data?
@@ -51,6 +54,17 @@ protocol PhotoStore {
 enum PhotoStoreError: Error, Equatable {
     /// The source image had no decodable bitmap, or JPEG encoding failed.
     case unprocessableImage
+}
+
+struct SavedPhotoDerivative: Equatable {
+    var fileName: String
+    var pixelWidth: Int
+    var pixelHeight: Int
+
+    var aspect: CGFloat {
+        guard pixelHeight > 0 else { return 1 }
+        return CGFloat(pixelWidth) / CGFloat(pixelHeight)
+    }
 }
 
 // MARK: - Filesystem implementation
@@ -78,12 +92,20 @@ final class FileSystemPhotoStore: PhotoStore {
     }
 
     func save(_ image: UIImage) throws -> String {
-        guard let data = PhotoProcessing.displayDerivative(from: image) else {
+        try saveDerivative(image).fileName
+    }
+
+    func saveDerivative(_ image: UIImage) throws -> SavedPhotoDerivative {
+        guard let output = PhotoProcessing.displayDerivative(from: image) else {
             throw PhotoStoreError.unprocessableImage
         }
         let fileName = UUID().uuidString + ".jpg"
-        try data.write(to: url(for: fileName), options: .atomic)
-        return fileName
+        try output.jpegData.write(to: url(for: fileName), options: .atomic)
+        return SavedPhotoDerivative(
+            fileName: fileName,
+            pixelWidth: output.pixelWidth,
+            pixelHeight: output.pixelHeight
+        )
     }
 
     func loadData(fileName: String) -> Data? {
@@ -104,24 +126,22 @@ final class FileSystemPhotoStore: PhotoStore {
 // MARK: - Derivative pipeline
 
 /// The pure image transform behind `PhotoStore.save`: normalise orientation →
-/// center-crop to 4:5 → downscale to ≤2048px → JPEG q0.8. Split out from the
+/// downscale to ≤2048px → JPEG q0.8. Split out from the
 /// filesystem store so the geometry is unit-testable without touching disk.
 enum PhotoProcessing {
 
-    /// Width ÷ height for 4:5 portrait.
-    static let targetAspect: CGFloat = 4.0 / 5.0
-    /// §6.1 longest-edge cap. For 4:5 portrait the height is the longest edge.
+    /// §6.1 longest-edge cap.
     static let maxLongestEdge: CGFloat = 2048
     /// §6.1 JPEG quality.
     static let jpegQuality: CGFloat = 0.8
 
     /// The full pipeline. Returns nil only if the image has no decodable bitmap
     /// or JPEG encoding fails — surfaced by the store as `.unprocessableImage`.
-    static func displayDerivative(from image: UIImage) -> Data? {
+    static func displayDerivative(from image: UIImage) -> DerivativeImage? {
         guard let normalized = normalizedCGImage(image) else { return nil }
-        let cropped = centerCropToTargetAspect(normalized)
-        let scaled = downscaleToCap(cropped)
-        return UIImage(cgImage: scaled).jpegData(compressionQuality: jpegQuality)
+        let scaled = downscaleToCap(normalized)
+        guard let data = UIImage(cgImage: scaled).jpegData(compressionQuality: jpegQuality) else { return nil }
+        return DerivativeImage(jpegData: data, pixelWidth: scaled.width, pixelHeight: scaled.height)
     }
 
     /// A `.up`-oriented `CGImage` in true pixel dimensions. Camera Roll photos
@@ -143,29 +163,6 @@ enum PhotoProcessing {
         return rendered.cgImage
     }
 
-    /// Center-crops to exactly 4:5 by trimming the longer axis. A source already
-    /// at 4:5 is returned untouched.
-    static func centerCropToTargetAspect(_ cg: CGImage) -> CGImage {
-        let width = CGFloat(cg.width)
-        let height = CGFloat(cg.height)
-        let aspect = width / height
-
-        var cropWidth = width
-        var cropHeight = height
-        if aspect > targetAspect {              // too wide → trim width
-            cropWidth = (height * targetAspect).rounded()
-        } else if aspect < targetAspect {       // too tall → trim height
-            cropHeight = (width / targetAspect).rounded()
-        }
-
-        let x = ((width - cropWidth) / 2).rounded(.down)
-        let y = ((height - cropHeight) / 2).rounded(.down)
-        let rect = CGRect(x: x, y: y,
-                          width: min(cropWidth, width - x),
-                          height: min(cropHeight, height - y))
-        return cg.cropping(to: rect) ?? cg
-    }
-
     /// Downscales so the longest edge is ≤ 2048px. Never upscales — a small
     /// source keeps its dimensions.
     static func downscaleToCap(_ cg: CGImage) -> CGImage {
@@ -184,5 +181,11 @@ enum PhotoProcessing {
             UIImage(cgImage: cg).draw(in: CGRect(origin: .zero, size: targetSize))
         }
         return rendered.cgImage ?? cg
+    }
+
+    struct DerivativeImage: Equatable {
+        var jpegData: Data
+        var pixelWidth: Int
+        var pixelHeight: Int
     }
 }

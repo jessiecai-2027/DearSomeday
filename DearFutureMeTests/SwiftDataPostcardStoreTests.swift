@@ -94,11 +94,37 @@ struct SwiftDataPostcardStoreTests {
         let id = UUID()
         try await store.create(Postcard(id: id, title: "first", unlockDate: t0, state: .sealed))
 
-        let replacement = Postcard(id: id, title: "second", unlockDate: t0, state: .sealed)
+        let photoID = UUID()
+        let assignment = SlotAssignment(
+            slotID: "slot-a",
+            photoID: photoID,
+            crop: PhotoCrop(scale: 1.5, offsetX: 0.1, offsetY: -0.1)
+        )
+        let replacement = Postcard(
+            id: id,
+            title: "second",
+            photos: [StoredPhoto(id: photoID, order: 0, fileName: "photo.jpg", aspect: 1.2)],
+            templateId: "template-a",
+            slotAssignments: [assignment],
+            backText: "back",
+            backFontId: "serif",
+            backTextColorHex: "#111111",
+            locationLabel: "Lisbon",
+            animationMetadata: [AnimationCue(targetID: "slot-a", kind: "future", duration: 1)],
+            unlockDate: t0,
+            state: .sealed
+        )
         try await store.update(replacement)
 
         let fetched = try await store.postcard(withID: id)
         #expect(fetched?.title == "second")
+        #expect(fetched?.templateId == "template-a")
+        #expect(fetched?.slotAssignments == [assignment])
+        #expect(fetched?.backText == "back")
+        #expect(fetched?.backFontId == "serif")
+        #expect(fetched?.backTextColorHex == "#111111")
+        #expect(fetched?.locationLabel == "Lisbon")
+        #expect(fetched?.animationMetadata.count == 1)
         // Exactly one card under this id — the foreign instance wasn't inserted.
         #expect(try await store.timeline(offset: 0, limit: 50).filter { $0.id == id }.count == 1)
     }

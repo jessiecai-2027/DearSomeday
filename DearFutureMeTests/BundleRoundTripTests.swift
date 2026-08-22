@@ -127,17 +127,17 @@ struct BundleRoundTripTests {
         #expect(loaded.manifest == manifest)
     }
 
-    // MARK: - 3. Exactly 10 photos — the §5.1 boundary
+    // MARK: - 3. Exactly 6 photos — the creation boundary
 
-    @Test func tenPhotosIsValid() throws {
+    @Test func sixPhotosIsValid() throws {
         let dir = try makeTempDirectory()
 
-        let photos = (0..<10).map {
+        let photos = (0..<6).map {
             PhotoRef(file: String(format: "photos/%02d.jpg", $0 + 1), order: $0)
         }
         let manifest = Manifest(
             id: UUID(),
-            title: "Ten",
+            title: "Six",
             description: "",
             createdAt: t0,
             editableUntil: t0,
@@ -146,13 +146,13 @@ struct BundleRoundTripTests {
             photos: photos,
             decoration: Decoration(substrateId: "kraft-01", elements: [])
         )
-        let bundlePhotos = (0..<10).map { BundlePhoto(order: $0, jpegData: photoData($0)) }
+        let bundlePhotos = (0..<6).map { BundlePhoto(order: $0, jpegData: photoData($0)) }
 
         let bundleURL = try BundleWriter.write(manifest, photos: bundlePhotos, to: dir)
         let loaded = try BundleReader.read(at: bundleURL)
 
-        #expect(loaded.photos.count == 10)
-        #expect(loaded.photos.map(\.ref.order) == Array(0..<10))
+        #expect(loaded.photos.count == 6)
+        #expect(loaded.photos.map(\.ref.order) == Array(0..<6))
         for photo in loaded.photos {
             #expect(photo.jpegData == photoData(photo.ref.order))
         }

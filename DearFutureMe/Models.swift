@@ -45,7 +45,7 @@
 //     relationships optional AND (for CloudKit) require explicit inverses,
 //     buying the classic nil-vs-empty ambiguity and ordering headaches for
 //     collections that are (a) owned by exactly one card, (b) never queried
-//     independently, (c) capped tiny (≤10 photos §5.1, ≤20 elements §4.4).
+//     independently, (c) capped tiny (≤6 photos in the MVP, ≤20 elements §4.4).
 //     That is composition, not association — so they're stored as Codable
 //     value arrays (one encoded attribute each). Order is preserved for free,
 //     no inverses, no relationship rules to satisfy. If a future need arises to
@@ -63,6 +63,7 @@
 //
 
 import Foundation
+import CoreGraphics
 import SwiftData
 
 // MARK: - Postcard
@@ -72,7 +73,7 @@ final class Postcard {
 
     /// Current on-disk schema for the local store. Independent of the bundle's
     /// `Manifest.latestSchemaVersion` — the two layers version separately.
-    static let latestSchemaVersion = 1
+    static let latestSchemaVersion = 2
 
     /// The card's domain identity (§6.1). This is NOT `.unique` — rule 2 —
     /// so uniqueness is an application invariant, not a store guarantee. Also
@@ -94,6 +95,28 @@ final class Postcard {
     /// Ordered (§6.1). Order is carried by `StoredPhoto.order` and by array
     /// index; keep them consistent. Empty = text-only card (§5.1 permits it).
     var photos: [StoredPhoto] = []
+
+    /// Front-side template chosen during creation. nil for legacy cards.
+    var templateId: String? = nil
+
+    /// Photo-to-template-slot placement and crop transforms. Kept as value
+    /// data so a future account/database backend can store it unchanged.
+    var slotAssignments: [SlotAssignment] = []
+
+    /// Back-side typed message. `message` remains the legacy/display summary;
+    /// new composer saves the same text to both fields for now.
+    var backText: String = ""
+
+    /// Back-side text styling. Token ids or hex strings, never platform ids.
+    var backFontId: String? = nil
+    var backTextColorHex: String = "#2B241E"
+
+    /// Optional user-entered place label. No location permission in MVP.
+    var locationLabel: String? = nil
+
+    /// Reserved for future animation. Empty in MVP; renderers must treat an
+    /// empty array as a static postcard.
+    var animationMetadata: [AnimationCue] = []
 
     /// Always known at creation. Optional-or-defaulted rule satisfied by the
     /// default; a card without a creation instant is meaningless, so we default
@@ -128,6 +151,13 @@ final class Postcard {
         title: String = "",
         message: String = "",
         photos: [StoredPhoto] = [],
+        templateId: String? = nil,
+        slotAssignments: [SlotAssignment] = [],
+        backText: String = "",
+        backFontId: String? = nil,
+        backTextColorHex: String = "#2B241E",
+        locationLabel: String? = nil,
+        animationMetadata: [AnimationCue] = [],
         createdAt: Date = Date(),
         unlockDate: Date? = nil,
         editableUntil: Date? = nil,
@@ -140,6 +170,13 @@ final class Postcard {
         self.title = title
         self.message = message
         self.photos = photos
+        self.templateId = templateId
+        self.slotAssignments = slotAssignments
+        self.backText = backText
+        self.backFontId = backFontId
+        self.backTextColorHex = backTextColorHex
+        self.locationLabel = locationLabel
+        self.animationMetadata = animationMetadata
         self.createdAt = createdAt
         self.unlockDate = unlockDate
         self.editableUntil = editableUntil
@@ -210,12 +247,104 @@ enum PostcardState: String, Codable, CaseIterable {
 /// `fileName` is the local handle to those bytes; `order` is the 0-based
 /// display position (§6.1: photos are ordered).
 struct StoredPhoto: Codable, Equatable, Hashable {
+    /// App-owned identity for this photo within a postcard. Stable across local
+    /// storage and future database/object-storage backends.
+    var id: UUID = UUID()
     var order: Int = 0
     var fileName: String = ""
+    var aspect: Double = 0.8
 
-    init(order: Int = 0, fileName: String = "") {
+    init(id: UUID = UUID(), order: Int = 0, fileName: String = "", aspect: Double = 0.8) {
+        self.id = id
         self.order = order
         self.fileName = fileName
+        self.aspect = aspect
+    }
+}
+
+// MARK: - Template placement
+
+struct CardTemplate: Identifiable, Codable, Equatable, Hashable {
+    var id: String = ""
+    var name: String = ""
+    var slots: [TemplateSlot] = []
+
+    var slotCount: Int { slots.count }
+
+    init(id: String = "", name: String = "", slots: [TemplateSlot] = []) {
+        self.id = id
+        self.name = name
+        self.slots = slots
+    }
+}
+
+struct TemplateSlot: Identifiable, Codable, Equatable, Hashable {
+    var id: String = ""
+    /// Normalized 0...1 frame inside the postcard front.
+    var x: Double = 0
+    var y: Double = 0
+    var width: Double = 1
+    var height: Double = 1
+
+    var aspect: CGFloat {
+        guard height != 0 else { return 1 }
+        return CGFloat(width / height)
+    }
+
+    init(id: String = "", x: Double = 0, y: Double = 0, width: Double = 1, height: Double = 1) {
+        self.id = id
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
+struct SlotAssignment: Identifiable, Codable, Equatable, Hashable {
+    var id: UUID = UUID()
+    var slotID: String = ""
+    var photoID: UUID = UUID()
+    var crop: PhotoCrop = .centered
+
+    init(id: UUID = UUID(), slotID: String = "", photoID: UUID = UUID(), crop: PhotoCrop = .centered) {
+        self.id = id
+        self.slotID = slotID
+        self.photoID = photoID
+        self.crop = crop
+    }
+}
+
+struct PhotoCrop: Codable, Equatable, Hashable {
+    var scale: Double = 1
+    var offsetX: Double = 0
+    var offsetY: Double = 0
+
+    static let centered = PhotoCrop()
+
+    static func centred(source _: CGFloat, target _: CGFloat) -> PhotoCrop {
+        .centered
+    }
+
+    init(scale: Double = 1, offsetX: Double = 0, offsetY: Double = 0) {
+        self.scale = scale
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+    }
+}
+
+struct AnimationCue: Codable, Equatable, Hashable {
+    var id: UUID = UUID()
+    var targetID: String = ""
+    var kind: String = ""
+    var startTime: Double = 0
+    var duration: Double = 0
+
+    init(id: UUID = UUID(), targetID: String = "", kind: String = "", startTime: Double = 0, duration: Double = 0) {
+        self.id = id
+        self.targetID = targetID
+        self.kind = kind
+        self.startTime = startTime
+        self.duration = duration
     }
 }
 

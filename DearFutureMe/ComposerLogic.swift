@@ -15,7 +15,8 @@ enum ComposerLogic {
     /// §5.1 field limits, enforced in the composer (the schema doesn't).
     static let maxTitleLength = 60
     static let maxMessageLength = 2_000
-    static let maxPhotos = 10
+    static let minPhotos = 1
+    static let maxPhotos = 6
 
     /// The unlock instant from the composer's date **and time** picker: the
     /// chosen local date and time, normalised to minute precision (seconds and
@@ -37,6 +38,17 @@ enum ComposerLogic {
             return "This postcard has already been sealed."
         case .unlockDateNotInFuture:
             return "Choose a day in the future."
+        case .trustedTimeUnavailable:
+            return "Can’t reach a trusted clock. Connect to the internet and try again."
+        }
+    }
+
+    static func creationErrorCopy(_ error: PostcardCreationError) -> String {
+        switch error {
+        case .noPhotos:
+            return "Choose at least one photo."
+        case .missingAssignments:
+            return "Choose a template before sealing."
         case .trustedTimeUnavailable:
             return "Can’t reach a trusted clock. Connect to the internet and try again."
         }

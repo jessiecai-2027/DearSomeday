@@ -23,6 +23,7 @@ final class AppServices {
     let clock: TrustedClock
     let lifecycle: PostcardLifecycle
     let coordinator: UnlockCoordinator
+    let creationService: PostcardCreationService
     let notificationScheduler: NotificationScheduler
     let notificationRouter: NotificationRouter
 
@@ -34,6 +35,7 @@ final class AppServices {
         let clock = TrustedClock(uptime: { ProcessInfo.processInfo.systemUptime })
         let store = SwiftDataPostcardStore(container: container)
         let lifecycle = PostcardLifecycle(clock: clock)
+        let photoStore = try FileSystemPhotoStore.applicationSupport()
 
         let router = NotificationRouter()
         let delegate = NotificationDelegate(router: router)
@@ -41,9 +43,15 @@ final class AppServices {
 
         self.clock = clock
         self.store = store
-        self.photoStore = try FileSystemPhotoStore.applicationSupport()
+        self.photoStore = photoStore
         self.lifecycle = lifecycle
         self.coordinator = UnlockCoordinator(store: store, lifecycle: lifecycle, clock: clock)
+        self.creationService = PostcardCreationService(
+            store: store,
+            photoStore: photoStore,
+            lifecycle: lifecycle,
+            clock: clock
+        )
         self.notificationScheduler = NotificationScheduler()
         self.notificationRouter = router
         self.notificationDelegate = delegate

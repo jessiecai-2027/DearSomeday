@@ -3,7 +3,7 @@
 //  DearFutureMeTests
 //
 //  Covers the two halves of PhotoStore: the derivative geometry
-//  (PhotoProcessing — 4:5 center-crop, ≤2048px longest edge, JPEG q0.8) and the
+//  (PhotoProcessing — aspect-preserving, ≤2048px longest edge, JPEG q0.8) and the
 //  filesystem I/O (save → load round-trip, idempotent delete). Source images
 //  are generated at known pixel sizes so the crop/scale maths is assertable
 //  without shipping fixture files.
@@ -47,49 +47,47 @@ struct PhotoStoreTests {
 
     // MARK: - Geometry
 
-    @Test func squareIsCroppedTo4x5AndCappedAt2048() throws {
-        let data = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 3000, height: 3000)))
-        let (w, h) = try pixelSize(of: data)
+    @Test func squareIsPreservedAndCappedAt2048() throws {
+        let output = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 3000, height: 3000)))
+        let (w, h) = try pixelSize(of: output.jpegData)
 
-        // Portrait 4:5, longest edge (height) clamped to the cap.
+        #expect(w == 2048)
         #expect(h == 2048)
-        #expect(abs(Double(w) / Double(h) - 0.8) < aspectTolerance)
         #expect(max(w, h) <= 2048)
+        #expect(output.pixelWidth == w)
+        #expect(output.pixelHeight == h)
     }
 
-    @Test func alreadyPortraitBelowCapKeepsItsDimensions() throws {
-        // 400×500 is exactly 4:5 and under the cap — no crop, no scale, no upscale.
-        let data = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 400, height: 500)))
-        let (w, h) = try pixelSize(of: data)
+    @Test func portraitBelowCapKeepsItsDimensions() throws {
+        let output = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 400, height: 500)))
+        let (w, h) = try pixelSize(of: output.jpegData)
 
         #expect(w == 400)
         #expect(h == 500)
     }
 
-    @Test func wideImageIsCroppedToPortraitNotStretched() throws {
-        // 3000×1000 → trim width to 4:5 (800×1000); height under the cap, no scale.
-        let data = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 3000, height: 1000)))
-        let (w, h) = try pixelSize(of: data)
+    @Test func wideImageKeepsAspectAndCapsLongestEdge() throws {
+        let output = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 3000, height: 1000)))
+        let (w, h) = try pixelSize(of: output.jpegData)
 
-        #expect(h == 1000)
-        #expect(w == 800)
-        #expect(abs(Double(w) / Double(h) - 0.8) < aspectTolerance)
+        #expect(w == 2048)
+        #expect(abs(Double(w) / Double(h) - 3.0) < aspectTolerance)
+        #expect(max(w, h) <= 2048)
     }
 
-    @Test func tallImageAboveCapCropsThenDownscales() throws {
-        // 1000×4000 → crop height to 4:5 (1000×1250), then cap height at 2048
-        // (already under it → stays 1000×1250). Verifies crop-then-cap ordering.
-        let data = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 1000, height: 4000)))
-        let (w, h) = try pixelSize(of: data)
+    @Test func tallImageKeepsAspectAndCapsLongestEdge() throws {
+        let output = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 1000, height: 4000)))
+        let (w, h) = try pixelSize(of: output.jpegData)
 
+        #expect(h == 2048)
         #expect(max(w, h) <= 2048)
-        #expect(abs(Double(w) / Double(h) - 0.8) < aspectTolerance)
+        #expect(abs(Double(w) / Double(h) - 0.25) < aspectTolerance)
     }
 
     @Test func derivativeIsJPEG() throws {
-        let data = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 1200, height: 1500)))
+        let output = try #require(PhotoProcessing.displayDerivative(from: solidImage(width: 1200, height: 1500)))
         // JPEG SOI marker.
-        #expect(data.prefix(2) == Data([0xFF, 0xD8]))
+        #expect(output.jpegData.prefix(2) == Data([0xFF, 0xD8]))
     }
 
     // MARK: - Filesystem round-trip
@@ -103,6 +101,16 @@ struct PhotoStoreTests {
         // What loads back decodes as a valid image at the derivative geometry.
         let (w, h) = try pixelSize(of: loaded)
         #expect(abs(Double(w) / Double(h) - 0.8) < aspectTolerance)
+    }
+
+    @Test func saveDerivativeReturnsGeometryMetadata() throws {
+        let store = try tempStore()
+        let saved = try store.saveDerivative(solidImage(width: 1600, height: 900))
+
+        #expect(saved.fileName.hasSuffix(".jpg"))
+        #expect(saved.pixelWidth == 1600)
+        #expect(saved.pixelHeight == 900)
+        #expect(abs(Double(saved.aspect) - (16.0 / 9.0)) < aspectTolerance)
     }
 
     @Test func distinctSavesGetDistinctHandles() throws {
