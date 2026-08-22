@@ -174,11 +174,7 @@ struct ComposerView: View {
             if photos.isEmpty {
                 emptyPhotoPicker
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 12)], spacing: 12) {
-                    ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                        photoThumb(photo, selectionNumber: index + 1)
-                    }
-                }
+                selectedPhotoGrid
             }
 
             photoPicker {
@@ -191,6 +187,22 @@ struct ComposerView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var selectedPhotoGrid: some View {
+        LazyVGrid(columns: selectedPhotoColumns, spacing: 12) {
+            ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                photoThumb(photo, selectionNumber: index + 1)
+                    .aspectRatio(1, contentMode: .fit)
+            }
+        }
+    }
+
+    private var selectedPhotoColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 12),
+            count: 3
+        )
     }
 
     private var emptyPhotoPicker: some View {
@@ -232,53 +244,53 @@ struct ComposerView: View {
     }
 
     private func photoThumb(_ photo: CreationPhoto, selectionNumber: Int) -> some View {
-        ZStack(alignment: .topTrailing) {
-            Group {
-                if let image = photo.thumbnail {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Rectangle().fill(.gray.opacity(0.3))
+        GeometryReader { proxy in
+            let side = min(proxy.size.width, proxy.size.height)
+
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if let image = photo.thumbnail {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Rectangle().fill(.gray.opacity(0.3))
+                    }
                 }
-            }
-            .aspectRatio(1, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+                .frame(width: side, height: side)
+                .clipped()
 
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.white, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(.white, lineWidth: 2)
 
-            VStack {
-                HStack {
-                    Text("\(selectionNumber)")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(.blue))
-                        .shadow(radius: 2, y: 1)
-                    Spacer()
+                Text("\(selectionNumber)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(.blue))
+                    .shadow(radius: 2, y: 1)
+                    .padding(6)
+                    .frame(width: side, height: side, alignment: .topLeading)
+
+                Button {
+                    remove(photo)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .black.opacity(0.95))
+                        .font(.system(size: 30, weight: .bold))
                 }
-                Spacer()
+                .buttonStyle(.plain)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Remove photo")
+                .frame(width: side, height: side, alignment: .topTrailing)
             }
-            .padding(6)
-
-            Button {
-                remove(photo)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, .black)
-                    .font(.title3)
-            }
-            .padding(6)
-            .accessibilityLabel("Remove photo")
+            .frame(width: side, height: side)
+            .background(Color(.secondarySystemBackground))
+            .clipped()
         }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.background)
-                .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
-        )
+        .aspectRatio(1, contentMode: .fit)
     }
 
     // MARK: - Step 2: template
