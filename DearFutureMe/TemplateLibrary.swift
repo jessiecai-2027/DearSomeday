@@ -13,46 +13,78 @@ enum TemplatePicker {
 
     static let all: [CardTemplate] = [
         CardTemplate(id: "one-full", name: "Full Frame", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.84, height: 0.84),
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 1),
         ]),
-        CardTemplate(id: "two-stacked", name: "Stacked", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.84, height: 0.40),
-            TemplateSlot(id: "b", x: 0.08, y: 0.52, width: 0.84, height: 0.40),
+        CardTemplate(id: "two-vertical", name: "Two Vertical", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 1),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 1),
         ]),
-        CardTemplate(id: "two-side-by-side", name: "Side by Side", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.40, height: 0.84),
-            TemplateSlot(id: "b", x: 0.52, y: 0.08, width: 0.40, height: 0.84),
+        CardTemplate(id: "two-horizontal", name: "Two Stacked", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 0.5),
+            TemplateSlot(id: "b", x: 0, y: 0.5, width: 1, height: 0.5),
         ]),
-        CardTemplate(id: "three-hero", name: "Hero Trio", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.84, height: 0.52),
-            TemplateSlot(id: "b", x: 0.08, y: 0.64, width: 0.40, height: 0.28),
-            TemplateSlot(id: "c", x: 0.52, y: 0.64, width: 0.40, height: 0.28),
+        CardTemplate(id: "three-rows", name: "Three Rows", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 1.0 / 3.0),
+            TemplateSlot(id: "b", x: 0, y: 1.0 / 3.0, width: 1, height: 1.0 / 3.0),
+            TemplateSlot(id: "c", x: 0, y: 2.0 / 3.0, width: 1, height: 1.0 / 3.0),
         ]),
-        CardTemplate(id: "three-column", name: "Three Strip", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.25, height: 0.84),
-            TemplateSlot(id: "b", x: 0.375, y: 0.08, width: 0.25, height: 0.84),
-            TemplateSlot(id: "c", x: 0.67, y: 0.08, width: 0.25, height: 0.84),
+        CardTemplate(id: "three-top-hero", name: "Top Hero", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 0.5),
+            TemplateSlot(id: "b", x: 0, y: 0.5, width: 0.5, height: 0.5),
+            TemplateSlot(id: "c", x: 0.5, y: 0.5, width: 0.5, height: 0.5),
+        ]),
+        CardTemplate(id: "three-bottom-hero", name: "Bottom Hero", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 0.5),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 0.5),
+            TemplateSlot(id: "c", x: 0, y: 0.5, width: 1, height: 0.5),
+        ]),
+        CardTemplate(id: "four-rows", name: "Four Rows", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 0.25),
+            TemplateSlot(id: "b", x: 0, y: 0.25, width: 1, height: 0.25),
+            TemplateSlot(id: "c", x: 0, y: 0.5, width: 1, height: 0.25),
+            TemplateSlot(id: "d", x: 0, y: 0.75, width: 1, height: 0.25),
         ]),
         CardTemplate(id: "four-grid", name: "Four Grid", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.40, height: 0.40),
-            TemplateSlot(id: "b", x: 0.52, y: 0.08, width: 0.40, height: 0.40),
-            TemplateSlot(id: "c", x: 0.08, y: 0.52, width: 0.40, height: 0.40),
-            TemplateSlot(id: "d", x: 0.52, y: 0.52, width: 0.40, height: 0.40),
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 0.5),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 0.5),
+            TemplateSlot(id: "c", x: 0, y: 0.5, width: 0.5, height: 0.5),
+            TemplateSlot(id: "d", x: 0.5, y: 0.5, width: 0.5, height: 0.5),
         ]),
-        CardTemplate(id: "five-mosaic", name: "Mosaic Five", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.52, height: 0.52),
-            TemplateSlot(id: "b", x: 0.64, y: 0.08, width: 0.28, height: 0.24),
-            TemplateSlot(id: "c", x: 0.64, y: 0.36, width: 0.28, height: 0.24),
-            TemplateSlot(id: "d", x: 0.08, y: 0.64, width: 0.40, height: 0.28),
-            TemplateSlot(id: "e", x: 0.52, y: 0.64, width: 0.40, height: 0.28),
+        CardTemplate(id: "five-bottom-hero", name: "Bottom Hero Five", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "c", x: 0, y: 1.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "d", x: 0.5, y: 1.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "e", x: 0, y: 2.0 / 3.0, width: 1, height: 1.0 / 3.0),
+        ]),
+        CardTemplate(id: "five-left-hero", name: "Left Hero Five", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 2.0 / 3.0),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "c", x: 0.5, y: 1.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "d", x: 0, y: 2.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "e", x: 0.5, y: 2.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+        ]),
+        CardTemplate(id: "five-right-hero", name: "Right Hero Five", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 2.0 / 3.0),
+            TemplateSlot(id: "c", x: 0, y: 1.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "d", x: 0, y: 2.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "e", x: 0.5, y: 2.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+        ]),
+        CardTemplate(id: "five-middle-hero", name: "Middle Hero Five", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 0.25),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 0.25),
+            TemplateSlot(id: "c", x: 0, y: 0.25, width: 1, height: 0.5),
+            TemplateSlot(id: "d", x: 0, y: 0.75, width: 0.5, height: 0.25),
+            TemplateSlot(id: "e", x: 0.5, y: 0.75, width: 0.5, height: 0.25),
         ]),
         CardTemplate(id: "six-grid", name: "Six Grid", slots: [
-            TemplateSlot(id: "a", x: 0.08, y: 0.08, width: 0.25, height: 0.40),
-            TemplateSlot(id: "b", x: 0.375, y: 0.08, width: 0.25, height: 0.40),
-            TemplateSlot(id: "c", x: 0.67, y: 0.08, width: 0.25, height: 0.40),
-            TemplateSlot(id: "d", x: 0.08, y: 0.52, width: 0.25, height: 0.40),
-            TemplateSlot(id: "e", x: 0.375, y: 0.52, width: 0.25, height: 0.40),
-            TemplateSlot(id: "f", x: 0.67, y: 0.52, width: 0.25, height: 0.40),
+            TemplateSlot(id: "a", x: 0, y: 0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "b", x: 0.5, y: 0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "c", x: 0, y: 1.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "d", x: 0.5, y: 1.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "e", x: 0, y: 2.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
+            TemplateSlot(id: "f", x: 0.5, y: 2.0 / 3.0, width: 0.5, height: 1.0 / 3.0),
         ]),
     ]
 

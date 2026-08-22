@@ -25,6 +25,31 @@ struct TemplatePickerTests {
         #expect(ranked.map(\.id) == ["two"])
     }
 
+    @Test func templateCatalogCoversOneThroughSixPhotos() {
+        for count in 1...6 {
+            let matches = TemplatePicker.ranked(
+                TemplatePicker.all,
+                photoAspects: Array(repeating: 1, count: count)
+            )
+
+            #expect(!matches.isEmpty)
+            #expect(matches.allSatisfy { $0.slotCount == count })
+        }
+    }
+
+    @Test func templateSlotsStayInsidePostcardBounds() {
+        for template in TemplatePicker.all {
+            for slot in template.slots {
+                #expect(slot.x >= 0)
+                #expect(slot.y >= 0)
+                #expect(slot.width > 0)
+                #expect(slot.height > 0)
+                #expect(slot.x + slot.width <= 1)
+                #expect(slot.y + slot.height <= 1)
+            }
+        }
+    }
+
     @Test func rankedPrefersBetterAspectFit() {
         let wide = CardTemplate(id: "wide", name: "Wide", slots: [
             TemplateSlot(id: "a", width: 0.8, height: 0.4),

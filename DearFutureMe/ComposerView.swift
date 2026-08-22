@@ -32,6 +32,7 @@ struct ComposerView: View {
     @State private var selectedTemplate: CardTemplate?
     @State private var assignments: [SlotAssignment] = []
     @State private var selectedSlotID: String?
+    @State private var photoBarriersEnabled = true
 
     @State private var title = ""
     @State private var backText = ""
@@ -311,7 +312,8 @@ struct ComposerView: View {
                         ForEach(ranked) { template in
                             TemplateThumbnail(
                                 template: template,
-                                isSelected: selectedTemplate?.id == template.id
+                                isSelected: selectedTemplate?.id == template.id,
+                                showsBarriers: photoBarriersEnabled
                             )
                             .onTapGesture {
                                 selectTemplate(template)
@@ -322,6 +324,9 @@ struct ComposerView: View {
                 }
 
                 if let selectedTemplate {
+                    Toggle("Barriers between photos", isOn: $photoBarriersEnabled)
+                        .font(.subheadline)
+
                     Text("Tap a photo, then drag or pinch to adjust it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -330,9 +335,11 @@ struct ComposerView: View {
                         template: selectedTemplate,
                         photos: photos,
                         assignments: $assignments,
-                        selectedSlotID: $selectedSlotID
+                        selectedSlotID: $selectedSlotID,
+                        showsBarriers: photoBarriersEnabled
                     )
-                    .aspectRatio(4.0 / 5.0, contentMode: .fit)
+                    .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
+                    .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
                     .frame(maxWidth: .infinity)
 
                     Button("Reset selected crop") {
@@ -360,7 +367,7 @@ struct ComposerView: View {
             ZStack(alignment: .topLeading) {
                 Image("PostcardBack")
                     .resizable()
-                    .scaledToFit()
+                    .scaledToFill()
                     .overlay {
                         RoundedRectangle(cornerRadius: 2)
                             .stroke(.gray.opacity(0.4), lineWidth: 1)
@@ -374,6 +381,9 @@ struct ComposerView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .opacity(backText.isEmpty ? 0.35 : 1)
             }
+            .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
+            .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
+            .clipped()
             .frame(maxWidth: .infinity)
 
             TextField("Title", text: $title)
@@ -630,20 +640,30 @@ struct ComposerView: View {
 
 // MARK: - Template preview
 
+private enum PostcardCanvasMetrics {
+    static let aspectRatio: CGFloat = 4.0 / 5.0
+    static let maxWidth: CGFloat = 300
+}
+
 private struct TemplateThumbnail: View {
     let template: CardTemplate
     let isSelected: Bool
+    let showsBarriers: Bool
 
     var body: some View {
         VStack(spacing: 8) {
             GeometryReader { proxy in
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.white)
+                    Rectangle()
+                        .fill(Color(red: 0.95, green: 0.90, blue: 0.82))
                     ForEach(template.slots) { slot in
-                        RoundedRectangle(cornerRadius: 4)
+                        Rectangle()
                             .fill(.gray.opacity(0.25))
-                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(.gray.opacity(0.6)))
+                            .overlay {
+                                if showsBarriers {
+                                    Rectangle().stroke(.white, lineWidth: 2)
+                                }
+                            }
                             .frame(width: CGFloat(slot.width) * proxy.size.width, height: CGFloat(slot.height) * proxy.size.height)
                             .position(
                                 x: CGFloat(slot.x + slot.width / 2) * proxy.size.width,
@@ -651,13 +671,16 @@ private struct TemplateThumbnail: View {
                             )
                     }
                 }
+                .clipped()
             }
-            .frame(width: 112, height: 140)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? .blue : .clear, lineWidth: 3))
+            .frame(width: 96, height: 120)
+            .overlay(Rectangle().stroke(.gray.opacity(0.35), lineWidth: 1))
+            .overlay(Rectangle().stroke(isSelected ? .blue : .clear, lineWidth: 3))
 
             Text(template.name)
                 .font(.caption)
                 .lineLimit(1)
+                .frame(width: 112)
         }
     }
 }
@@ -667,6 +690,7 @@ private struct TemplateCanvasView: View {
     let photos: [CreationPhoto]
     @Binding var assignments: [SlotAssignment]
     @Binding var selectedSlotID: String?
+    let showsBarriers: Bool
 
     @State private var dragStartCrop: PhotoCrop?
     @State private var magnifyStartScale: Double?
@@ -674,13 +698,15 @@ private struct TemplateCanvasView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
+                Rectangle()
                     .fill(Color(red: 0.95, green: 0.90, blue: 0.82))
 
                 ForEach(template.slots) { slot in
                     slotView(slot, in: proxy.size)
                 }
             }
+            .overlay(Rectangle().stroke(.gray.opacity(0.35), lineWidth: 1))
+            .clipped()
         }
     }
 
@@ -707,8 +733,10 @@ private struct TemplateCanvasView: View {
         .frame(width: slotSize.width, height: slotSize.height)
         .clipped()
         .overlay(
-            Rectangle()
-                .stroke(selectedSlotID == slot.id ? .blue : .white, lineWidth: selectedSlotID == slot.id ? 3 : 1)
+            Rectangle().stroke(
+                selectedSlotID == slot.id ? .blue : .white,
+                lineWidth: selectedSlotID == slot.id ? 3 : (showsBarriers ? 3 : 0)
+            )
         )
         .position(
             x: CGFloat(slot.x + slot.width / 2) * size.width,
