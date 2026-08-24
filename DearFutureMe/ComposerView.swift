@@ -378,7 +378,7 @@ struct ComposerView: View {
             ZStack(alignment: .topLeading) {
                 Image("PostcardBack")
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
                     .overlay {
                         RoundedRectangle(cornerRadius: 2)
                             .stroke(.gray.opacity(0.4), lineWidth: 1)

@@ -138,7 +138,7 @@ struct PostcardBackView: View {
             ZStack(alignment: .topLeading) {
                 Image("PostcardBack")
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
 
                 VStack(alignment: .leading, spacing: scaled(12, in: proxy.size)) {
                     if !text.isEmpty {
