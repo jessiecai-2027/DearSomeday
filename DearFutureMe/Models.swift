@@ -111,7 +111,7 @@ final class Postcard {
     var backFontId: String? = nil
     var backTextColorHex: String = "#2B241E"
 
-    /// Optional user-entered place label. No location permission in MVP.
+    /// Optional place label, entered manually or resolved from current location.
     var locationLabel: String? = nil
 
     /// Reserved for future animation. Empty in MVP; renderers must treat an

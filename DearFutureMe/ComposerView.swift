@@ -6,7 +6,7 @@
 //   1. Pick 1-6 photos
 //   2. Choose a ranked template and adjust photo crops inside slots
 //   3. Write the postcard back and choose text styling
-//   4. Add optional typed location, choose unlock date, seal locally
+//   4. Add optional typed/current location, choose unlock date, seal locally
 //
 
 import SwiftUI
@@ -40,6 +40,7 @@ struct ComposerView: View {
     @State private var backTextColorHex = BackTextColor.espresso.hex
     @State private var customBackTextColor = Color(hex: BackTextColor.espresso.hex)
     @State private var locationLabel = ""
+    @StateObject private var currentLocation = CurrentLocationResolver()
     @State private var chosenDate = ComposerView.defaultUnlockDate()
 
     @State private var isSealing = false
@@ -440,8 +441,6 @@ struct ComposerView: View {
     private var fontOptions: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Font")
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
             ForEach(BackFont.allCases) { font in
                 Button {
@@ -482,9 +481,33 @@ struct ComposerView: View {
             Text("Logistics")
                 .font(.headline)
 
-            TextField("Place, optional", text: $locationLabel)
-                .textFieldStyle(.roundedBorder)
-                .focused($focusedField, equals: .location)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    TextField("Place, optional", text: $locationLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .location)
+
+                    Button {
+                        Task { await useCurrentLocation() }
+                    } label: {
+                        Label("Current", systemImage: "location")
+                            .frame(height: 36)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(currentLocation.isRequesting)
+                    .accessibilityLabel("Use Current Location")
+                }
+
+                if currentLocation.isRequesting {
+                    Label("Finding your current location...", systemImage: "location.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let message = currentLocation.message {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(currentLocation.hasError ? .red : .secondary)
+                }
+            }
 
             DatePicker("Unlock", selection: $chosenDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
 
@@ -665,6 +688,13 @@ struct ComposerView: View {
             errorMessage = ComposerLogic.sealErrorCopy(error)
         } catch {
             errorMessage = "Couldn’t save this postcard. Please try again."
+        }
+    }
+
+    private func useCurrentLocation() async {
+        focusedField = nil
+        if let place = await currentLocation.currentPlaceLabel() {
+            locationLabel = place
         }
     }
 
