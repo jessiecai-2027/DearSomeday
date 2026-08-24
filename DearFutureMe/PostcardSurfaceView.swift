@@ -12,6 +12,13 @@ import UIKit
 struct PostcardSurfaceView: View {
     let card: Postcard
     let photosByID: [UUID: UIImage]
+    let photosByOrder: [Int: UIImage]
+
+    init(card: Postcard, photosByID: [UUID: UIImage], photosByOrder: [Int: UIImage] = [:]) {
+        self.card = card
+        self.photosByID = photosByID
+        self.photosByOrder = photosByOrder
+    }
 
     @State private var side: Side = .front
 
@@ -25,7 +32,7 @@ struct PostcardSurfaceView: View {
             Group {
                 switch side {
                 case .front:
-                    PostcardFrontView(card: card, photosByID: photosByID)
+                    PostcardFrontView(card: card, photosByID: photosByID, photosByOrder: photosByOrder)
                 case .back:
                     PostcardBackView(card: card)
                 }
@@ -41,8 +48,32 @@ struct PostcardSurfaceView: View {
             Text(side == .front ? "Front" : "Back")
                 .font(Tokens.Font.caption)
                 .foregroundStyle(.secondary)
+
+            if side == .back {
+                metadata
+                    .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .leading)
+            }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var metadata: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let location = card.locationLabel?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !location.isEmpty {
+                Text("Place: \(location)")
+            }
+
+            Text("Created \(card.createdAt.formatted(date: .abbreviated, time: .omitted))")
+
+            if let date = card.unlockDate {
+                Text("Unlocked \(date.formatted(date: .abbreviated, time: .shortened))")
+            }
+        }
+        .font(Tokens.Font.caption)
+        .foregroundStyle(Tokens.Color.chromeTextMuted)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func toggleSide() {
@@ -55,6 +86,7 @@ struct PostcardSurfaceView: View {
 struct PostcardFrontView: View {
     let card: Postcard
     let photosByID: [UUID: UIImage]
+    let photosByOrder: [Int: UIImage]
 
     private var template: CardTemplate {
         PostcardRenderResolver.template(for: card)
@@ -86,7 +118,7 @@ struct PostcardFrontView: View {
             height: CGFloat(slot.height) * size.height
         )
         let assignment = assignmentsBySlot[slot.id]
-        let image = assignment.flatMap { photosByID[$0.photoID] }
+        let image = image(for: assignment)
         let crop = assignment?.crop ?? .centered
 
         return ZStack {
@@ -105,7 +137,12 @@ struct PostcardFrontView: View {
                         y: CGFloat(crop.offsetY) * slotSize.height
                     )
             } else {
-                Rectangle().fill(Tokens.Color.paperTan.opacity(0.3))
+                ZStack {
+                    Rectangle().fill(Tokens.Color.paperTan.opacity(0.3))
+                    Image(systemName: "photo")
+                        .font(.system(size: min(slotSize.width, slotSize.height) * 0.16))
+                        .foregroundStyle(Tokens.Color.chromeTextMuted.opacity(0.45))
+                }
             }
         }
         .frame(width: slotSize.width, height: slotSize.height)
@@ -115,6 +152,20 @@ struct PostcardFrontView: View {
             x: CGFloat(slot.x + slot.width / 2) * size.width,
             y: CGFloat(slot.y + slot.height / 2) * size.height
         )
+    }
+
+    private func image(for assignment: SlotAssignment?) -> UIImage? {
+        if let assignment, let image = photosByID[assignment.photoID] {
+            return image
+        }
+
+        guard let assignment else { return nil }
+        let orderedPhotos = card.photos.sorted { $0.order < $1.order }
+        guard let fallbackIndex = orderedPhotos.firstIndex(where: { $0.id == assignment.photoID }) else {
+            return nil
+        }
+
+        return photosByOrder[orderedPhotos[fallbackIndex].order] ?? photosByOrder[fallbackIndex]
     }
 }
 
@@ -148,10 +199,6 @@ struct PostcardBackView: View {
                             .lineSpacing(6)
                             .multilineTextAlignment(.leading)
                     }
-
-                    Spacer(minLength: scaled(8, in: proxy.size))
-
-                    metadata
                 }
                 .padding(.horizontal, scaled(32, in: proxy.size))
                 .padding(.top, scaled(42, in: proxy.size))
@@ -160,24 +207,6 @@ struct PostcardBackView: View {
             .overlay(Rectangle().stroke(Tokens.Color.paperTan.opacity(0.7), lineWidth: 1))
             .clipped()
         }
-    }
-
-    @ViewBuilder
-    private var metadata: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let location = card.locationLabel?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !location.isEmpty {
-                Text("Place: \(location)")
-            }
-
-            Text("Created \(card.createdAt.formatted(date: .abbreviated, time: .omitted))")
-
-            if let date = card.unlockDate {
-                Text("Unlocked \(date.formatted(date: .abbreviated, time: .shortened))")
-            }
-        }
-        .font(Tokens.Font.caption)
-        .foregroundStyle(Tokens.Color.inkEspresso.opacity(0.72))
     }
 
     private func scaled(_ value: CGFloat, in size: CGSize) -> CGFloat {

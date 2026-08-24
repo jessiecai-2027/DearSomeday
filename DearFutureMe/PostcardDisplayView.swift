@@ -31,6 +31,7 @@ struct PostcardDisplayView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var revealed = false
     @State private var photosByID: [UUID: UIImage] = [:]
+    @State private var photosByOrder: [Int: UIImage] = [:]
 
     var body: some View {
         Group {
@@ -67,13 +68,16 @@ struct PostcardDisplayView: View {
     private func loadPhotos() async {
         let ordered = card.photos.sorted { $0.order < $1.order }
         var images: [UUID: UIImage] = [:]
+        var orderedImages: [Int: UIImage] = [:]
         for photo in ordered {
             if let data = services.photoStore.loadData(fileName: photo.fileName),
                let image = UIImage(data: data) {
                 images[photo.id] = image
+                orderedImages[photo.order] = image
             }
         }
         photosByID = images
+        photosByOrder = orderedImages
     }
 
     // MARK: - States
@@ -84,7 +88,7 @@ struct PostcardDisplayView: View {
                 Text(card.title.isEmpty ? "(untitled)" : card.title)
                     .font(Tokens.Font.screenTitle)
 
-                PostcardSurfaceView(card: card, photosByID: photosByID)
+                PostcardSurfaceView(card: card, photosByID: photosByID, photosByOrder: photosByOrder)
             }
             .padding()
             .padding(.top, 44)          // clear the floating Done control

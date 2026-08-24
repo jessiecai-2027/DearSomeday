@@ -11,7 +11,7 @@ import SwiftUI
 import UIKit
 
 enum PostcardCanvasMetrics {
-    static let aspectRatio: CGFloat = 4.0 / 5.0
+    static let aspectRatio: CGFloat = 2.0 / 3.0
     static let maxWidth: CGFloat = 340
 }
 
