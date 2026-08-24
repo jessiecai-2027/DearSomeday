@@ -190,10 +190,11 @@ struct PostcardTimelineView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Text("No postcards yet.").font(.headline)
+            Text("No postcards yet.").font(Tokens.Font.headline)
             Text("Write one to your future self.")
                 .foregroundStyle(.secondary)
             Button("Create a postcard") { showComposer = true }
+                .font(Tokens.Font.button)
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -201,10 +202,10 @@ struct PostcardTimelineView: View {
     private var deniedBanner: some View {
         HStack(spacing: 8) {
             Text("Notifications are off — you won’t be reminded when a postcard opens.")
-                .font(.footnote)
+                .font(Tokens.Font.footnote)
             Spacer(minLength: 8)
             Button("Settings") { openSettings() }
-                .font(.footnote)
+                .font(Tokens.Font.footnote)
         }
         .padding(8)
         .frame(maxWidth: .infinity)
@@ -335,15 +336,17 @@ private struct TimelineRowView: View {
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("✅ \(title)")
+                        .font(Tokens.Font.headline)
                     Text("Opened")
-                        .font(.caption)
+                        .font(Tokens.Font.caption)
                         .foregroundStyle(.secondary)
                 }
             case .sealed:
                 VStack(alignment: .leading, spacing: 4) {
                     Text("🔒 \(title)")
+                        .font(Tokens.Font.headline)
                     Text("Locked until \(unlockText)")
-                        .font(.caption)
+                        .font(Tokens.Font.caption)
                         .foregroundStyle(.secondary)
                 }
             case .draft:
@@ -413,7 +416,7 @@ private struct LockedDeleteConfirmView: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("Delete “\(card.title.isEmpty ? "(untitled)" : card.title)”?")
-                .font(.headline)
+                .font(Tokens.Font.headline)
                 .multilineTextAlignment(.center)
 
             if let date = card.unlockDate {
@@ -425,11 +428,11 @@ private struct LockedDeleteConfirmView: View {
                 .multilineTextAlignment(.center)
 
             Text(isPressing ? "Keep holding…" : "Press and hold to delete")
-                .font(.caption)
+                .font(Tokens.Font.caption)
                 .foregroundStyle(.secondary)
 
             Text("Hold to delete")
-                .fontWeight(.semibold)
+                .font(Tokens.Font.button)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -457,7 +460,7 @@ private struct NotificationPrimingView: View {
         VStack(spacing: 20) {
             Text("🔔").font(.largeTitle)
             Text("We’ll tell you when this opens")
-                .font(.headline)
+                .font(Tokens.Font.headline)
                 .multilineTextAlignment(.center)
             Text("Turn on notifications and we’ll remind you when your postcard unlocks.")
                 .multilineTextAlignment(.center)

@@ -36,9 +36,9 @@ struct ComposerView: View {
 
     @State private var title = ""
     @State private var backText = ""
-    @State private var backFontId = BackFont.caveat.id
-    @State private var backTextColorHex = BackTextColor.espresso.hex
-    @State private var customBackTextColor = Color(hex: BackTextColor.espresso.hex)
+    @State private var backFontId = PostcardBackFont.defaultFont.id
+    @State private var backTextColorHex = PostcardBackTextColor.defaultColor.hex
+    @State private var customBackTextColor = Color(hex: PostcardBackTextColor.defaultColor.hex)
     @State private var locationLabel = ""
     @StateObject private var currentLocation = CurrentLocationResolver()
     @State private var chosenDate = ComposerView.defaultUnlockDate()
@@ -107,12 +107,12 @@ struct ComposerView: View {
             ForEach(Step.allCases, id: \.self) { item in
                 VStack(spacing: 6) {
                     Text("\(item.rawValue + 1)")
-                        .font(.caption.weight(.semibold))
+                        .font(Tokens.Font.caption.weight(.semibold))
                         .frame(width: 24, height: 24)
                         .background(Circle().fill(item.rawValue <= step.rawValue ? .blue : .gray.opacity(0.25)))
                         .foregroundStyle(item.rawValue <= step.rawValue ? .white : .secondary)
                     Text(item.title)
-                        .font(.caption2)
+                        .font(Tokens.Font.caption2)
                         .foregroundStyle(item == step ? .primary : .secondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -138,7 +138,7 @@ struct ComposerView: View {
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.footnote)
+                        .font(Tokens.Font.footnote)
                         .foregroundStyle(.red)
                 }
             }
@@ -173,7 +173,7 @@ struct ComposerView: View {
     private var photoSelection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Choose 1-6 photos")
-                .font(.headline)
+                .font(Tokens.Font.headline)
 
             if photos.isEmpty {
                 emptyPhotoPicker
@@ -188,7 +188,7 @@ struct ComposerView: View {
             .disabled(photos.count >= ComposerLogic.maxPhotos)
 
             Text("\(photos.count) of \(ComposerLogic.maxPhotos) selected")
-                .font(.caption)
+                .font(Tokens.Font.caption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -216,9 +216,9 @@ struct ComposerView: View {
                     .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(.blue)
                 Text("No photos selected")
-                    .font(.subheadline.weight(.semibold))
+                    .font(Tokens.Font.subheadline.weight(.semibold))
                 Text("Tap here to choose up to 6")
-                    .font(.caption)
+                    .font(Tokens.Font.caption)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
@@ -268,7 +268,7 @@ struct ComposerView: View {
                     .stroke(.white, lineWidth: 2)
 
                 Text("\(selectionNumber)")
-                    .font(.caption.weight(.bold))
+                    .font(Tokens.Font.caption.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(.blue))
@@ -302,7 +302,7 @@ struct ComposerView: View {
     private var templateSelection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Choose a template")
-                .font(.headline)
+                .font(Tokens.Font.headline)
 
             let ranked = rankedTemplates
             if ranked.isEmpty {
@@ -327,10 +327,10 @@ struct ComposerView: View {
 
                 if let selectedTemplate {
                     Toggle("Barriers between photos", isOn: $photoBarriersEnabled)
-                        .font(.subheadline)
+                        .font(Tokens.Font.subheadline)
 
                     Text("Tap a photo, then drag or pinch to adjust it.")
-                        .font(.caption)
+                        .font(Tokens.Font.caption)
                         .foregroundStyle(.secondary)
 
                     TemplateCanvasView(
@@ -364,7 +364,7 @@ struct ComposerView: View {
     private var backEditor: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Write the back")
-                .font(.headline)
+                .font(Tokens.Font.headline)
 
             TextField("Title (optional)", text: $title)
                 .textFieldStyle(.roundedBorder)
@@ -385,7 +385,7 @@ struct ComposerView: View {
                     }
 
                 TextEditor(text: $backText)
-                    .font(selectedBackFont.font)
+                    .font(selectedBackFont.bodyFont)
                     .foregroundColor(Color(hex: backTextColorHex))
                     .scrollContentBackground(.hidden)
                     .background(.clear)
@@ -401,7 +401,7 @@ struct ComposerView: View {
 
                 if backText.isEmpty {
                     Text("Your message")
-                        .font(selectedBackFont.font)
+                        .font(selectedBackFont.bodyFont)
                         .foregroundStyle(Color(hex: backTextColorHex).opacity(0.35))
                         .padding(.horizontal, 38)
                         .padding(.top, 50)
@@ -418,7 +418,7 @@ struct ComposerView: View {
             HStack {
                 Text("Color")
                 Spacer()
-                ForEach(BackTextColor.allCases) { color in
+                ForEach(PostcardBackTextColor.allCases) { color in
                     Button {
                         selectBackTextColor(color.hex)
                     } label: {
@@ -442,7 +442,7 @@ struct ComposerView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Font")
 
-            ForEach(BackFont.allCases) { font in
+            ForEach(PostcardBackFont.allCases) { font in
                 Button {
                     backFontId = font.id
                 } label: {
@@ -452,7 +452,7 @@ struct ComposerView: View {
                         Spacer()
                         if backFontId == font.id {
                             Image(systemName: "checkmark")
-                                .font(.caption.weight(.bold))
+                                .font(Tokens.Font.caption.weight(.bold))
                         }
                     }
                     .foregroundStyle(backFontId == font.id ? .blue : .primary)
@@ -479,7 +479,7 @@ struct ComposerView: View {
     private var logistics: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Logistics")
-                .font(.headline)
+                .font(Tokens.Font.headline)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
@@ -500,11 +500,11 @@ struct ComposerView: View {
 
                 if currentLocation.isRequesting {
                     Label("Finding your current location...", systemImage: "location.fill")
-                        .font(.caption)
+                        .font(Tokens.Font.caption)
                         .foregroundStyle(.secondary)
                 } else if let message = currentLocation.message {
                     Text(message)
-                        .font(.caption)
+                        .font(Tokens.Font.caption)
                         .foregroundStyle(currentLocation.hasError ? .red : .secondary)
                 }
             }
@@ -514,12 +514,12 @@ struct ComposerView: View {
             if let selectedTemplate {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Summary")
-                        .font(.subheadline.weight(.semibold))
+                        .font(Tokens.Font.subheadline.weight(.semibold))
                     Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
                     Text(selectedTemplate.name)
                     Text(locationLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No place" : locationLabel)
                 }
-                .font(.caption)
+                .font(Tokens.Font.caption)
                 .foregroundStyle(.secondary)
             }
         }
@@ -700,8 +700,8 @@ struct ComposerView: View {
 
     // MARK: - Helpers
 
-    private var selectedBackFont: BackFont {
-        BackFont.allCases.first(where: { $0.id == backFontId }) ?? .caveat
+    private var selectedBackFont: PostcardBackFont {
+        PostcardBackFont.resolved(id: backFontId)
     }
 
     private var customBackTextColorBinding: Binding<Color> {
@@ -716,15 +716,9 @@ struct ComposerView: View {
     }
 
     private func selectBackTextColor(_ value: String) {
-        guard let normalized = Self.normalizedHexColor(value) else { return }
+        guard let normalized = Color.normalizedHexColor(value) else { return }
         customBackTextColor = Color(hex: normalized)
         backTextColorHex = normalized
-    }
-
-    private static func normalizedHexColor(_ value: String) -> String? {
-        let raw = value.trimmingCharacters(in: CharacterSet(charactersIn: "#").union(.whitespacesAndNewlines))
-        guard raw.count == 6, raw.allSatisfy(\.isHexDigit) else { return nil }
-        return "#\(raw.uppercased())"
     }
 
     /// Default the picker to tomorrow at 9:00am — a friendly starting point
@@ -737,11 +731,6 @@ struct ComposerView: View {
 }
 
 // MARK: - Template preview
-
-private enum PostcardCanvasMetrics {
-    static let aspectRatio: CGFloat = 4.0 / 5.0
-    static let maxWidth: CGFloat = 340
-}
 
 private struct TemplateThumbnail: View {
     let template: CardTemplate
@@ -776,7 +765,7 @@ private struct TemplateThumbnail: View {
             .overlay(Rectangle().stroke(isSelected ? .blue : .clear, lineWidth: 3))
 
             Text(template.name)
-                .font(.caption)
+                .font(Tokens.Font.caption)
                 .lineLimit(1)
                 .frame(width: 112)
         }
@@ -896,102 +885,5 @@ private struct TemplateCanvasView: View {
         dragStartSlotID = nil
         magnifyStartScale = nil
         magnifyStartSlotID = nil
-    }
-}
-
-// MARK: - Back style
-
-private enum BackFont: String, CaseIterable, Identifiable {
-    case caveat
-    case dancingScript
-    case ebGaramond
-    case josefinSans
-
-    var id: String { rawValue }
-
-    var name: String {
-        switch self {
-        case .caveat: return "Caveat"
-        case .dancingScript: return "Dancing Script"
-        case .ebGaramond: return "EB Garamond"
-        case .josefinSans: return "Josefin Sans"
-        }
-    }
-
-    private var fontName: String {
-        switch self {
-        case .caveat: return "Caveat-Regular"
-        case .dancingScript: return "DancingScript-Regular"
-        case .ebGaramond: return "EBGaramond-Regular"
-        case .josefinSans: return "JosefinSans-Regular"
-        }
-    }
-
-    var font: Font {
-        .custom(fontName, size: 17, relativeTo: .body)
-    }
-
-    var previewFont: Font {
-        .custom(fontName, size: 19, relativeTo: .body)
-    }
-}
-
-private enum BackTextColor: String, CaseIterable, Identifiable {
-    case espresso
-    case taupe
-    case sage
-    case clay
-    case mist
-    case black
-
-    var id: String { rawValue }
-
-    var name: String {
-        switch self {
-        case .espresso: return "Espresso"
-        case .taupe: return "Taupe"
-        case .sage: return "Sage"
-        case .clay: return "Clay"
-        case .mist: return "Mist"
-        case .black: return "Black"
-        }
-    }
-
-    var hex: String {
-        switch self {
-        case .espresso: return "#2B241E"
-        case .taupe: return "#A98B76"
-        case .sage: return "#6F754F"
-        case .clay: return "#A46150"
-        case .mist: return "#536FA3"
-        case .black: return "#111111"
-        }
-    }
-}
-
-private extension Color {
-    init(hex: String) {
-        let raw = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        var value: UInt64 = 0
-        Scanner(string: raw).scanHexInt64(&value)
-        let r = Double((value >> 16) & 0xFF) / 255.0
-        let g = Double((value >> 8) & 0xFF) / 255.0
-        let b = Double(value & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b)
-    }
-
-    var hexString: String? {
-        let uiColor = UIColor(self)
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        guard uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
-        return String(
-            format: "#%02X%02X%02X",
-            Int(red * 255),
-            Int(green * 255),
-            Int(blue * 255)
-        )
     }
 }

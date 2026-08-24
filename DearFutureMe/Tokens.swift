@@ -46,7 +46,7 @@ enum Tokens {
 
     // MARK: Typography
     //
-    // Chrome uses the system font — Dynamic Type comes free.
+    // Chrome uses Bodoni Moda — Dynamic Type still works through `relativeTo:`.
     // Canvas uses character faces, sized UP: handwriting and display faces have
     // smaller x-heights, so 20pt handwriting reads like 16pt system.
     //
@@ -60,17 +60,22 @@ enum Tokens {
         /// `.custom` silently falls back to system if the font isn't installed,
         /// so these are safe placeholders — the app builds and runs today.
         enum Family {
+            static let chrome      = "BodoniModa9pt-Regular"
             static let display     = "Georgia"          // card titles
             static let typewriter  = "American Typewriter"
             static let handwriting = "Bradley Hand"
         }
 
         // Chrome
-        static let screenTitle  = SwiftUI.Font.system(size: 28, weight: .semibold)
-        static let sectionLabel = SwiftUI.Font.system(size: 13, weight: .medium)
-        static let body         = SwiftUI.Font.system(size: 17, weight: .regular)
-        static let caption      = SwiftUI.Font.system(size: 13, weight: .regular)
-        static let button       = SwiftUI.Font.system(size: 16, weight: .medium)
+        static let screenTitle  = SwiftUI.Font.custom(Family.chrome, size: 28, relativeTo: .title).weight(.semibold)
+        static let sectionLabel = SwiftUI.Font.custom(Family.chrome, size: 13, relativeTo: .subheadline).weight(.medium)
+        static let headline     = SwiftUI.Font.custom(Family.chrome, size: 17, relativeTo: .headline).weight(.semibold)
+        static let subheadline  = SwiftUI.Font.custom(Family.chrome, size: 15, relativeTo: .subheadline)
+        static let body         = SwiftUI.Font.custom(Family.chrome, size: 17, relativeTo: .body)
+        static let footnote     = SwiftUI.Font.custom(Family.chrome, size: 13, relativeTo: .footnote)
+        static let caption      = SwiftUI.Font.custom(Family.chrome, size: 13, relativeTo: .caption)
+        static let caption2     = SwiftUI.Font.custom(Family.chrome, size: 11, relativeTo: .caption2)
+        static let button       = SwiftUI.Font.custom(Family.chrome, size: 16, relativeTo: .body).weight(.medium)
 
         // Canvas — `relativeTo:` keeps Dynamic Type working with custom faces
         static let cardTitle   = SwiftUI.Font.custom(Family.display,     size: 24, relativeTo: .title2)

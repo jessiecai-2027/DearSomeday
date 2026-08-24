@@ -33,6 +33,7 @@ struct DearFutureMeApp: App {
     var body: some Scene {
         WindowGroup {
             PostcardTimelineView(services: services)
+                .font(Tokens.Font.body)
         }
         .modelContainer(modelContainer)
     }

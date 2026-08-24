@@ -30,7 +30,7 @@ struct PostcardDisplayView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var revealed = false
-    @State private var photos: [UIImage] = []
+    @State private var photosByID: [UUID: UIImage] = [:]
 
     var body: some View {
         Group {
@@ -66,47 +66,25 @@ struct PostcardDisplayView: View {
 
     private func loadPhotos() async {
         let ordered = card.photos.sorted { $0.order < $1.order }
-        var images: [UIImage] = []
+        var images: [UUID: UIImage] = [:]
         for photo in ordered {
             if let data = services.photoStore.loadData(fileName: photo.fileName),
                let image = UIImage(data: data) {
-                images.append(image)
+                images[photo.id] = image
             }
         }
-        photos = images
+        photosByID = images
     }
 
     // MARK: - States
 
     private var content: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
                 Text(card.title.isEmpty ? "(untitled)" : card.title)
-                    .font(.title)
+                    .font(Tokens.Font.screenTitle)
 
-                ForEach(Array(photos.enumerated()), id: \.offset) { _, image in
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                }
-
-                let displayMessage = card.backText.isEmpty ? card.message : card.backText
-                if !displayMessage.isEmpty {
-                    Text(displayMessage)
-                }
-
-                if let location = card.locationLabel, !location.isEmpty {
-                    Text(location)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let date = card.unlockDate {
-                    Text("Unlocked \(date.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                PostcardSurfaceView(card: card, photosByID: photosByID)
             }
             .padding()
             .padding(.top, 44)          // clear the floating Done control
@@ -119,7 +97,7 @@ struct PostcardDisplayView: View {
             Text("Still locked")
             if let date = card.unlockDate {
                 Text("Opens \(date.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption)
+                    .font(Tokens.Font.caption)
                     .foregroundStyle(.secondary)
             }
         }

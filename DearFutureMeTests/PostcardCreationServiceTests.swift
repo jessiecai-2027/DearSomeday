@@ -76,6 +76,7 @@ struct PostcardCreationServiceTests {
 
         let stored = try #require(try await store.postcard(withID: card.id))
         #expect(stored.state == .sealed)
+        #expect(stored.createdAt == now)
         #expect(stored.templateId == "one")
         #expect(stored.slotAssignments == assignments)
         #expect(stored.backText == "remember this")

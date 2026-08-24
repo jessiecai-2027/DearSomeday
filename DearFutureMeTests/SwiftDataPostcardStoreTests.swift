@@ -48,6 +48,7 @@ struct SwiftDataPostcardStoreTests {
         // SwiftData's identity map returns the very instance we inserted.
         #expect(fetched === pc)
         #expect(fetched?.title == "Iceland")
+        #expect(fetched?.createdAt == pc.createdAt)
     }
 
     @Test func fetchMissingIDReturnsNil() async throws {
@@ -111,6 +112,7 @@ struct SwiftDataPostcardStoreTests {
             backTextColorHex: "#111111",
             locationLabel: "Lisbon",
             animationMetadata: [AnimationCue(targetID: "slot-a", kind: "future", duration: 1)],
+            createdAt: t0.addingTimeInterval(-day),
             unlockDate: t0,
             state: .sealed
         )
@@ -125,6 +127,7 @@ struct SwiftDataPostcardStoreTests {
         #expect(fetched?.backTextColorHex == "#111111")
         #expect(fetched?.locationLabel == "Lisbon")
         #expect(fetched?.animationMetadata.count == 1)
+        #expect(fetched?.createdAt == t0.addingTimeInterval(-day))
         // Exactly one card under this id — the foreign instance wasn't inserted.
         #expect(try await store.timeline(offset: 0, limit: 50).filter { $0.id == id }.count == 1)
     }
