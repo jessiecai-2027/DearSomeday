@@ -38,6 +38,9 @@ struct ComposerView: View {
     @State private var backText = ""
     @State private var backFontId = BackFont.system.id
     @State private var backTextColorHex = BackTextColor.espresso.hex
+    @State private var customBackTextColor = Color(hex: BackTextColor.espresso.hex)
+    @State private var customBackTextColorHex = BackTextColor.espresso.hex
+    @State private var customBackTextPaletteHexes: [String] = []
     @State private var locationLabel = ""
     @State private var chosenDate = ComposerView.defaultUnlockDate()
 
@@ -47,7 +50,7 @@ struct ComposerView: View {
 
     @FocusState private var focusedField: Field?
 
-    private enum Field { case title, backText, location }
+    private enum Field { case title, backText, colorHex, location }
 
     private enum Step: Int, CaseIterable {
         case photos
@@ -364,6 +367,15 @@ struct ComposerView: View {
             Text("Write the back")
                 .font(.headline)
 
+            TextField("Title (optional)", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .title)
+                .onChange(of: title) { _, new in
+                    if new.count > ComposerLogic.maxTitleLength {
+                        title = String(new.prefix(ComposerLogic.maxTitleLength))
+                    }
+                }
+
             ZStack(alignment: .topLeading) {
                 Image("PostcardBack")
                     .resizable()
@@ -373,37 +385,34 @@ struct ComposerView: View {
                             .stroke(.gray.opacity(0.4), lineWidth: 1)
                     }
 
-                Text(backText.isEmpty ? "Your message" : backText)
+                TextEditor(text: $backText)
                     .font(selectedBackFont.font)
-                    .foregroundStyle(Color(hex: backTextColorHex))
+                    .foregroundColor(Color(hex: backTextColorHex))
+                    .scrollContentBackground(.hidden)
+                    .background(.clear)
+                    .focused($focusedField, equals: .backText)
+                    .onChange(of: backText) { _, new in
+                        if new.count > ComposerLogic.maxMessageLength {
+                            backText = String(new.prefix(ComposerLogic.maxMessageLength))
+                        }
+                    }
                     .padding(.horizontal, 32)
                     .padding(.top, 42)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .opacity(backText.isEmpty ? 0.35 : 1)
+                    .padding(.bottom, 28)
+
+                if backText.isEmpty {
+                    Text("Your message")
+                        .font(selectedBackFont.font)
+                        .foregroundStyle(Color(hex: backTextColorHex).opacity(0.35))
+                        .padding(.horizontal, 38)
+                        .padding(.top, 50)
+                        .allowsHitTesting(false)
+                }
             }
             .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
             .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
             .clipped()
             .frame(maxWidth: .infinity)
-
-            TextField("Title", text: $title)
-                .textFieldStyle(.roundedBorder)
-                .focused($focusedField, equals: .title)
-                .onChange(of: title) { _, new in
-                    if new.count > ComposerLogic.maxTitleLength {
-                        title = String(new.prefix(ComposerLogic.maxTitleLength))
-                    }
-                }
-
-            TextEditor(text: $backText)
-                .focused($focusedField, equals: .backText)
-                .frame(height: 160)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.25)))
-                .onChange(of: backText) { _, new in
-                    if new.count > ComposerLogic.maxMessageLength {
-                        backText = String(new.prefix(ComposerLogic.maxMessageLength))
-                    }
-                }
 
             Picker("Font", selection: $backFontId) {
                 ForEach(BackFont.allCases) { font in
@@ -417,7 +426,7 @@ struct ComposerView: View {
                 Spacer()
                 ForEach(BackTextColor.allCases) { color in
                     Button {
-                        backTextColorHex = color.hex
+                        selectBackTextColor(color.hex)
                     } label: {
                         Circle()
                             .fill(Color(hex: color.hex))
@@ -425,6 +434,74 @@ struct ComposerView: View {
                             .overlay(Circle().stroke(backTextColorHex == color.hex ? .blue : .clear, lineWidth: 3))
                     }
                     .accessibilityLabel(color.name)
+                }
+
+                ColorPicker("Custom color", selection: customBackTextColorBinding, supportsOpacity: false)
+                    .labelsHidden()
+                    .frame(width: 34)
+                    .accessibilityLabel("Custom color")
+            }
+
+            TextField("Hex code", text: $customBackTextColorHex)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .focused($focusedField, equals: .colorHex)
+                .onChange(of: customBackTextColorHex) { _, new in
+                    applyCustomBackTextColorHex(new)
+                }
+
+            customBackTextPalette
+        }
+    }
+
+    private var customBackTextPalette: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text("Custom palette")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    addCustomBackTextColor()
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                }
+                .disabled(!canAddCustomBackTextColor)
+                .accessibilityLabel("Add current color")
+            }
+
+            if !customBackTextPaletteHexes.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(customBackTextPaletteHexes, id: \.self) { hex in
+                            ZStack(alignment: .topTrailing) {
+                                Button {
+                                    selectBackTextColor(hex)
+                                } label: {
+                                    Circle()
+                                        .fill(Color(hex: hex))
+                                        .frame(width: 32, height: 32)
+                                        .overlay(Circle().stroke(backTextColorHex == hex ? .blue : .secondary.opacity(0.35), lineWidth: backTextColorHex == hex ? 3 : 1))
+                                }
+                                .accessibilityLabel(hex)
+
+                                Button {
+                                    deleteCustomBackTextColor(hex)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .symbolRenderingMode(.palette)
+                                        .foregroundStyle(.white, .red)
+                                }
+                                .offset(x: 6, y: -6)
+                                .accessibilityLabel("Delete \(hex)")
+                            }
+                            .frame(width: 42, height: 42)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
             }
         }
@@ -629,6 +706,49 @@ struct ComposerView: View {
         BackFont.allCases.first { $0.id == backFontId } ?? .system
     }
 
+    private var customBackTextColorBinding: Binding<Color> {
+        Binding {
+            customBackTextColor
+        } set: { newColor in
+            customBackTextColor = newColor
+            if let hex = newColor.hexString {
+                selectBackTextColor(hex)
+            }
+        }
+    }
+
+    private func applyCustomBackTextColorHex(_ value: String) {
+        selectBackTextColor(value)
+    }
+
+    private func selectBackTextColor(_ value: String) {
+        guard let normalized = Self.normalizedHexColor(value) else { return }
+        customBackTextColorHex = normalized
+        customBackTextColor = Color(hex: normalized)
+        backTextColorHex = normalized
+    }
+
+    private var canAddCustomBackTextColor: Bool {
+        guard let normalized = Self.normalizedHexColor(customBackTextColorHex) else { return false }
+        return !customBackTextPaletteHexes.contains(normalized)
+    }
+
+    private func addCustomBackTextColor() {
+        guard let normalized = Self.normalizedHexColor(customBackTextColorHex) else { return }
+        guard !customBackTextPaletteHexes.contains(normalized) else { return }
+        customBackTextPaletteHexes.append(normalized)
+    }
+
+    private func deleteCustomBackTextColor(_ hex: String) {
+        customBackTextPaletteHexes.removeAll { $0 == hex }
+    }
+
+    private static func normalizedHexColor(_ value: String) -> String? {
+        let raw = value.trimmingCharacters(in: CharacterSet(charactersIn: "#").union(.whitespacesAndNewlines))
+        guard raw.count == 6, raw.allSatisfy(\.isHexDigit) else { return nil }
+        return "#\(raw.uppercased())"
+    }
+
     /// Default the picker to tomorrow at 9:00am — a friendly starting point
     /// that's reliably in the future regardless of the current time of day.
     private static func defaultUnlockDate() -> Date {
@@ -642,7 +762,7 @@ struct ComposerView: View {
 
 private enum PostcardCanvasMetrics {
     static let aspectRatio: CGFloat = 4.0 / 5.0
-    static let maxWidth: CGFloat = 300
+    static let maxWidth: CGFloat = 340
 }
 
 private struct TemplateThumbnail: View {
@@ -693,7 +813,9 @@ private struct TemplateCanvasView: View {
     let showsBarriers: Bool
 
     @State private var dragStartCrop: PhotoCrop?
+    @State private var dragStartSlotID: String?
     @State private var magnifyStartScale: Double?
+    @State private var magnifyStartSlotID: String?
 
     var body: some View {
         GeometryReader { proxy in
@@ -743,7 +865,11 @@ private struct TemplateCanvasView: View {
             y: CGFloat(slot.y + slot.height / 2) * size.height
         )
         .contentShape(Rectangle())
-        .onTapGesture { selectedSlotID = slot.id }
+        .highPriorityGesture(
+            TapGesture().onEnded {
+                selectSlot(slot.id)
+            }
+        )
         .gesture(dragGesture(for: slot, slotSize: slotSize))
         .simultaneousGesture(magnifyGesture(for: slot))
     }
@@ -751,24 +877,47 @@ private struct TemplateCanvasView: View {
     private func dragGesture(for slot: TemplateSlot, slotSize: CGSize) -> some Gesture {
         DragGesture()
             .onChanged { value in
-                guard selectedSlotID == slot.id, let index = assignments.firstIndex(where: { $0.slotID == slot.id }) else { return }
-                if dragStartCrop == nil { dragStartCrop = assignments[index].crop }
+                selectSlot(slot.id)
+                guard let index = assignments.firstIndex(where: { $0.slotID == slot.id }) else { return }
+                if dragStartSlotID != slot.id {
+                    dragStartSlotID = slot.id
+                    dragStartCrop = assignments[index].crop
+                }
                 let start = dragStartCrop ?? assignments[index].crop
                 assignments[index].crop.offsetX = start.offsetX + Double(value.translation.width / max(slotSize.width, 1))
                 assignments[index].crop.offsetY = start.offsetY + Double(value.translation.height / max(slotSize.height, 1))
             }
-            .onEnded { _ in dragStartCrop = nil }
+            .onEnded { _ in
+                dragStartCrop = nil
+                dragStartSlotID = nil
+            }
     }
 
     private func magnifyGesture(for slot: TemplateSlot) -> some Gesture {
         MagnificationGesture()
             .onChanged { value in
-                guard selectedSlotID == slot.id, let index = assignments.firstIndex(where: { $0.slotID == slot.id }) else { return }
-                if magnifyStartScale == nil { magnifyStartScale = assignments[index].crop.scale }
+                selectSlot(slot.id)
+                guard let index = assignments.firstIndex(where: { $0.slotID == slot.id }) else { return }
+                if magnifyStartSlotID != slot.id {
+                    magnifyStartSlotID = slot.id
+                    magnifyStartScale = assignments[index].crop.scale
+                }
                 let start = magnifyStartScale ?? assignments[index].crop.scale
                 assignments[index].crop.scale = min(max(start * Double(value), 1), 4)
             }
-            .onEnded { _ in magnifyStartScale = nil }
+            .onEnded { _ in
+                magnifyStartScale = nil
+                magnifyStartSlotID = nil
+            }
+    }
+
+    private func selectSlot(_ slotID: String) {
+        guard selectedSlotID != slotID else { return }
+        selectedSlotID = slotID
+        dragStartCrop = nil
+        dragStartSlotID = nil
+        magnifyStartScale = nil
+        magnifyStartSlotID = nil
     }
 }
 
@@ -802,6 +951,8 @@ private enum BackTextColor: String, CaseIterable, Identifiable {
     case espresso
     case taupe
     case sage
+    case clay
+    case mist
     case black
 
     var id: String { rawValue }
@@ -811,6 +962,8 @@ private enum BackTextColor: String, CaseIterable, Identifiable {
         case .espresso: return "Espresso"
         case .taupe: return "Taupe"
         case .sage: return "Sage"
+        case .clay: return "Clay"
+        case .mist: return "Mist"
         case .black: return "Black"
         }
     }
@@ -820,7 +973,8 @@ private enum BackTextColor: String, CaseIterable, Identifiable {
         case .espresso: return "#2B241E"
         case .taupe: return "#A98B76"
         case .sage: return "#6F754F"
-        case .black: return "#111111"
+        case .clay: return "#A46150"
+        case .mist: return "#536FA3"
         }
     }
 }
@@ -834,5 +988,20 @@ private extension Color {
         let g = Double((value >> 8) & 0xFF) / 255.0
         let b = Double(value & 0xFF) / 255.0
         self.init(red: r, green: g, blue: b)
+    }
+
+    var hexString: String? {
+        let uiColor = UIColor(self)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+        return String(
+            format: "#%02X%02X%02X",
+            Int(red * 255),
+            Int(green * 255),
+            Int(blue * 255)
+        )
     }
 }
