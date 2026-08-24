@@ -23,6 +23,16 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7F50000130194E2100B0B516 /* Exceptions for "DearFutureMe" folder in "DearFutureMe" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7F421AD130194E2000B0B516 /* DearFutureMe */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileReference section */
 		7F421AD230194E2000B0B516 /* DearFutureMe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DearFutureMe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F421ADF30194E2100B0B516 /* DearFutureMeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DearFutureMeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -32,6 +42,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7F421AD430194E2000B0B516 /* DearFutureMe */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7F50000130194E2100B0B516 /* Exceptions for "DearFutureMe" folder in "DearFutureMe" target */,
+			);
 			path = DearFutureMe;
 			sourceTree = "<group>";
 		};
@@ -399,7 +412,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4CBQ36CVV9;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DearFutureMe/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,7 +446,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4CBQ36CVV9;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DearFutureMe/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

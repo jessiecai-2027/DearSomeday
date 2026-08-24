@@ -36,11 +36,9 @@ struct ComposerView: View {
 
     @State private var title = ""
     @State private var backText = ""
-    @State private var backFontId = BackFont.system.id
+    @State private var backFontId = BackFont.caveat.id
     @State private var backTextColorHex = BackTextColor.espresso.hex
     @State private var customBackTextColor = Color(hex: BackTextColor.espresso.hex)
-    @State private var customBackTextColorHex = BackTextColor.espresso.hex
-    @State private var customBackTextPaletteHexes: [String] = []
     @State private var locationLabel = ""
     @State private var chosenDate = ComposerView.defaultUnlockDate()
 
@@ -50,7 +48,7 @@ struct ComposerView: View {
 
     @FocusState private var focusedField: Field?
 
-    private enum Field { case title, backText, colorHex, location }
+    private enum Field { case title, backText, location }
 
     private enum Step: Int, CaseIterable {
         case photos
@@ -414,12 +412,7 @@ struct ComposerView: View {
             .clipped()
             .frame(maxWidth: .infinity)
 
-            Picker("Font", selection: $backFontId) {
-                ForEach(BackFont.allCases) { font in
-                    Text(font.name).tag(font.id)
-                }
-            }
-            .pickerStyle(.segmented)
+            fontOptions
 
             HStack {
                 Text("Color")
@@ -441,68 +434,43 @@ struct ComposerView: View {
                     .frame(width: 34)
                     .accessibilityLabel("Custom color")
             }
-
-            TextField("Hex code", text: $customBackTextColorHex)
-                .textFieldStyle(.roundedBorder)
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .focused($focusedField, equals: .colorHex)
-                .onChange(of: customBackTextColorHex) { _, new in
-                    applyCustomBackTextColorHex(new)
-                }
-
-            customBackTextPalette
         }
     }
 
-    private var customBackTextPalette: some View {
+    private var fontOptions: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text("Custom palette")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Text("Font")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
+            ForEach(BackFont.allCases) { font in
                 Button {
-                    addCustomBackTextColor()
+                    backFontId = font.id
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                }
-                .disabled(!canAddCustomBackTextColor)
-                .accessibilityLabel("Add current color")
-            }
-
-            if !customBackTextPaletteHexes.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(customBackTextPaletteHexes, id: \.self) { hex in
-                            ZStack(alignment: .topTrailing) {
-                                Button {
-                                    selectBackTextColor(hex)
-                                } label: {
-                                    Circle()
-                                        .fill(Color(hex: hex))
-                                        .frame(width: 32, height: 32)
-                                        .overlay(Circle().stroke(backTextColorHex == hex ? .blue : .secondary.opacity(0.35), lineWidth: backTextColorHex == hex ? 3 : 1))
-                                }
-                                .accessibilityLabel(hex)
-
-                                Button {
-                                    deleteCustomBackTextColor(hex)
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.caption)
-                                        .symbolRenderingMode(.palette)
-                                        .foregroundStyle(.white, .red)
-                                }
-                                .offset(x: 6, y: -6)
-                                .accessibilityLabel("Delete \(hex)")
-                            }
-                            .frame(width: 42, height: 42)
+                    HStack {
+                        Text(font.name)
+                            .font(font.previewFont)
+                        Spacer()
+                        if backFontId == font.id {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.bold))
                         }
                     }
-                    .padding(.vertical, 4)
+                    .foregroundStyle(backFontId == font.id ? .blue : .primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(backFontId == font.id ? Color.blue.opacity(0.1) : Color(.secondarySystemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(backFontId == font.id ? .blue : .secondary.opacity(0.2), lineWidth: 1)
+                    )
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(font.name)
             }
         }
     }
@@ -703,7 +671,7 @@ struct ComposerView: View {
     // MARK: - Helpers
 
     private var selectedBackFont: BackFont {
-        BackFont.allCases.first { $0.id == backFontId } ?? .system
+        BackFont.allCases.first(where: { $0.id == backFontId }) ?? .caveat
     }
 
     private var customBackTextColorBinding: Binding<Color> {
@@ -717,30 +685,10 @@ struct ComposerView: View {
         }
     }
 
-    private func applyCustomBackTextColorHex(_ value: String) {
-        selectBackTextColor(value)
-    }
-
     private func selectBackTextColor(_ value: String) {
         guard let normalized = Self.normalizedHexColor(value) else { return }
-        customBackTextColorHex = normalized
         customBackTextColor = Color(hex: normalized)
         backTextColorHex = normalized
-    }
-
-    private var canAddCustomBackTextColor: Bool {
-        guard let normalized = Self.normalizedHexColor(customBackTextColorHex) else { return false }
-        return !customBackTextPaletteHexes.contains(normalized)
-    }
-
-    private func addCustomBackTextColor() {
-        guard let normalized = Self.normalizedHexColor(customBackTextColorHex) else { return }
-        guard !customBackTextPaletteHexes.contains(normalized) else { return }
-        customBackTextPaletteHexes.append(normalized)
-    }
-
-    private func deleteCustomBackTextColor(_ hex: String) {
-        customBackTextPaletteHexes.removeAll { $0 == hex }
     }
 
     private static func normalizedHexColor(_ value: String) -> String? {
@@ -924,26 +872,37 @@ private struct TemplateCanvasView: View {
 // MARK: - Back style
 
 private enum BackFont: String, CaseIterable, Identifiable {
-    case system
-    case rounded
-    case serif
+    case caveat
+    case dancingScript
+    case ebGaramond
+    case josefinSans
 
     var id: String { rawValue }
 
     var name: String {
         switch self {
-        case .system: return "Clean"
-        case .rounded: return "Soft"
-        case .serif: return "Letter"
+        case .caveat: return "Caveat"
+        case .dancingScript: return "Dancing Script"
+        case .ebGaramond: return "EB Garamond"
+        case .josefinSans: return "Josefin Sans"
+        }
+    }
+
+    private var fontName: String {
+        switch self {
+        case .caveat: return "Caveat-Regular"
+        case .dancingScript: return "DancingScript-Regular"
+        case .ebGaramond: return "EBGaramond-Regular"
+        case .josefinSans: return "JosefinSans-Regular"
         }
     }
 
     var font: Font {
-        switch self {
-        case .system: return .body
-        case .rounded: return .system(.body, design: .rounded)
-        case .serif: return .system(.body, design: .serif)
-        }
+        .custom(fontName, size: 17, relativeTo: .body)
+    }
+
+    var previewFont: Font {
+        .custom(fontName, size: 19, relativeTo: .body)
     }
 }
 
@@ -975,6 +934,7 @@ private enum BackTextColor: String, CaseIterable, Identifiable {
         case .sage: return "#6F754F"
         case .clay: return "#A46150"
         case .mist: return "#536FA3"
+        case .black: return "#111111"
         }
     }
 }
