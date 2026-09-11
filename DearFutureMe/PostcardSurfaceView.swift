@@ -47,12 +47,10 @@ struct PostcardSurfaceView: View {
 
             Text(side == .front ? "Front" : "Back")
                 .font(Tokens.Font.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Tokens.Color.chromeText)
 
-            if side == .back {
-                metadata
-                    .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .leading)
-            }
+            metadata
+                .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .leading)
         }
         .frame(maxWidth: .infinity)
     }
@@ -72,7 +70,7 @@ struct PostcardSurfaceView: View {
             }
         }
         .font(Tokens.Font.caption)
-        .foregroundStyle(Tokens.Color.chromeTextMuted)
+        .foregroundStyle(Tokens.Color.chromeText)
         .fixedSize(horizontal: false, vertical: true)
     }
 

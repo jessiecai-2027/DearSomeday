@@ -81,14 +81,17 @@ struct ComposerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .font(Tokens.Font.button)
                         .disabled(isSealing)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
+                        .font(Tokens.Font.button)
                 }
             }
         }
+        .appBackground()
         .interactiveDismissDisabled(isSealing)
         .onChange(of: pickerItems) { _, items in
             Task { await importPicked(items) }
@@ -110,10 +113,10 @@ struct ComposerView: View {
                         .font(Tokens.Font.caption.weight(.semibold))
                         .frame(width: 24, height: 24)
                         .background(Circle().fill(item.rawValue <= step.rawValue ? .blue : .gray.opacity(0.25)))
-                        .foregroundStyle(item.rawValue <= step.rawValue ? .white : .secondary)
+                        .foregroundStyle(Tokens.Color.chromeText)
                     Text(item.title)
                         .font(Tokens.Font.caption2)
-                        .foregroundStyle(item == step ? .primary : .secondary)
+                        .foregroundStyle(Tokens.Color.chromeText)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -139,18 +142,21 @@ struct ComposerView: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(Tokens.Font.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Tokens.Color.chromeText)
                 }
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .scrollContentBackground(.hidden)
+        .background(.clear)
         .scrollDismissesKeyboard(.interactively)
     }
 
     private var footer: some View {
         HStack {
             Button("Back") { goBack() }
+                .font(Tokens.Font.button)
                 .disabled(step == .photos || isSealing)
 
             Spacer()
@@ -162,6 +168,7 @@ struct ComposerView: View {
                     goNext()
                 }
             }
+            .font(Tokens.Font.button)
             .buttonStyle(.borderedProminent)
             .disabled(!canContinue || isSealing)
         }
@@ -179,17 +186,18 @@ struct ComposerView: View {
                 emptyPhotoPicker
             } else {
                 selectedPhotoGrid
-            }
 
-            photoPicker {
-                Label(photos.isEmpty ? "Add photos" : "Add more photos", systemImage: "photo.on.rectangle")
+                photoPicker {
+                    Label("Add more photos", systemImage: "photo.on.rectangle")
+                        .font(Tokens.Font.button)
+                }
+                .buttonStyle(.bordered)
+                .disabled(photos.count >= ComposerLogic.maxPhotos)
             }
-            .buttonStyle(.bordered)
-            .disabled(photos.count >= ComposerLogic.maxPhotos)
 
             Text("\(photos.count) of \(ComposerLogic.maxPhotos) selected")
                 .font(Tokens.Font.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Tokens.Color.chromeText)
         }
     }
 
@@ -216,10 +224,10 @@ struct ComposerView: View {
                     .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(.blue)
                 Text("No photos selected")
-                    .font(Tokens.Font.subheadline.weight(.semibold))
+                    .font(Tokens.Font.button.weight(.semibold))
                 Text("Tap here to choose up to 6")
-                    .font(Tokens.Font.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Tokens.Font.button)
+                    .foregroundStyle(Tokens.Color.chromeText)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 190)
@@ -250,6 +258,7 @@ struct ComposerView: View {
     private func photoThumb(_ photo: CreationPhoto, selectionNumber: Int) -> some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
+            let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
 
             ZStack(alignment: .topTrailing) {
                 Group {
@@ -262,14 +271,14 @@ struct ComposerView: View {
                     }
                 }
                 .frame(width: side, height: side)
-                .clipped()
+                .clipShape(shape)
 
-                RoundedRectangle(cornerRadius: 2)
+                shape
                     .stroke(.white, lineWidth: 2)
 
                 Text("\(selectionNumber)")
                     .font(Tokens.Font.caption.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Tokens.Color.chromeText)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(.blue))
                     .shadow(radius: 2, y: 1)
@@ -292,7 +301,7 @@ struct ComposerView: View {
             }
             .frame(width: side, height: side)
             .background(Color(.secondarySystemBackground))
-            .clipped()
+            .clipShape(shape)
         }
         .aspectRatio(1, contentMode: .fit)
     }
@@ -307,7 +316,7 @@ struct ComposerView: View {
             let ranked = rankedTemplates
             if ranked.isEmpty {
                 Text("Choose photos first.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Tokens.Color.chromeText)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
@@ -331,7 +340,7 @@ struct ComposerView: View {
 
                     Text("Tap a photo, then drag or pinch to adjust it.")
                         .font(Tokens.Font.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Tokens.Color.chromeText)
 
                     TemplateCanvasView(
                         template: selectedTemplate,
@@ -347,6 +356,7 @@ struct ComposerView: View {
                     Button("Reset selected crop") {
                         resetSelectedCrop()
                     }
+                    .font(Tokens.Font.button)
                     .buttonStyle(.bordered)
                     .disabled(selectedSlotID == nil)
                 }
@@ -455,7 +465,7 @@ struct ComposerView: View {
                                 .font(Tokens.Font.caption.weight(.bold))
                         }
                     }
-                    .foregroundStyle(backFontId == font.id ? .blue : .primary)
+                    .foregroundStyle(Tokens.Color.chromeText)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -491,6 +501,7 @@ struct ComposerView: View {
                         Task { await useCurrentLocation() }
                     } label: {
                         Label("Current", systemImage: "location")
+                            .font(Tokens.Font.button)
                             .frame(height: 36)
                     }
                     .buttonStyle(.bordered)
@@ -501,11 +512,11 @@ struct ComposerView: View {
                 if currentLocation.isRequesting {
                     Label("Finding your current location...", systemImage: "location.fill")
                         .font(Tokens.Font.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Tokens.Color.chromeText)
                 } else if let message = currentLocation.message {
                     Text(message)
                         .font(Tokens.Font.caption)
-                        .foregroundStyle(currentLocation.hasError ? .red : .secondary)
+                        .foregroundStyle(Tokens.Color.chromeText)
                 }
             }
 
@@ -520,7 +531,7 @@ struct ComposerView: View {
                     Text(locationLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No place" : locationLabel)
                 }
                 .font(Tokens.Font.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Tokens.Color.chromeText)
             }
         }
     }
@@ -816,7 +827,7 @@ private struct TemplateCanvasView: View {
                     .offset(x: CGFloat(crop.offsetX) * slotSize.width, y: CGFloat(crop.offsetY) * slotSize.height)
             } else {
                 Text("Photo")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Tokens.Color.chromeText)
             }
         }
         .frame(width: slotSize.width, height: slotSize.height)

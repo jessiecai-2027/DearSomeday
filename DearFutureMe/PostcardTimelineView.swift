@@ -2,23 +2,9 @@
 //  PostcardTimelineView.swift
 //  DearFutureMe
 //
-//  The app's root, replacing the token-test ContentView. **Intentionally ugly**
-//  (BUILD-PLAN step 3): system List, no textures, no Tokens. The scrapbook look
-//  is step 4. Responsibilities:
-//   • run the unlock sweep on launch and every foreground (§5.4), and re-scan +
-//     re-schedule notifications each time (§5.7);
-//   • show the timeline in §5.5 order, paged in batches of 50;
-//   • sealed rows show the title + "Locked until…" only, loading NO photo bytes
-//     (§5.3.2); unlocked rows show a thumbnail and open the display view (§5.6);
-//   • delete on every card with confirmation, hold-to-confirm for locked (§5.3);
-//   • prime notification permission after the first seal (§7.1), surface a quiet
-//     badge if denied (§7.2), and route notification taps through the display
-//     view's re-verify (§5.4).
-//
-//  Not yet (deferred, not forgotten): compact/card view modes and the blurred
-//  locked treatment (§5.5) are step-4 visuals; here "not loaded" stands in for
-//  "blurred".
-//
+//  Envelope timeline with shared paper texture. Locked cards never load photo
+//  bytes; unlocked cards open through the display view's trusted-time check.
+//  Maintains unlock sweeps, paging, deletion, and notification routing.
 
 import SwiftUI
 import UIKit
@@ -55,15 +41,29 @@ struct PostcardTimelineView: View {
             List {
                 ForEach(cards, id: \.id) { card in
                     rowView(for: card)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: Tokens.Space.xs,
+                            leading: Tokens.Space.screenMargin,
+                            bottom: Tokens.Space.xs,
+                            trailing: Tokens.Space.screenMargin
+                        ))
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
                                 requestDelete(card)
                             } label: {
                                 Label("Delete", systemImage: "trash")
+                                    .font(Tokens.Font.button)
                             }
                         }
                         .onAppear { maybeLoadMore(after: card) }
                 }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background {
+                AppBackgroundView()
             }
             .overlay {
                 if cards.isEmpty && !isBusy {
@@ -87,9 +87,11 @@ struct PostcardTimelineView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Sweep") { Task { await sweepAndReload() } }
+                        .font(Tokens.Font.button)
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Seed 20s") { Task { await seedDebugCard() } }
+                        .font(Tokens.Font.button)
                 }
             }
             #endif
@@ -105,7 +107,9 @@ struct PostcardTimelineView: View {
                     unlockedDeleteTarget = nil
                     Task { await performDelete(card) }
                 }
+                .font(Tokens.Font.button)
                 Button("Cancel", role: .cancel) { unlockedDeleteTarget = nil }
+                    .font(Tokens.Font.button)
             } message: { _ in
                 Text("This can’t be undone.")
             }
@@ -176,15 +180,16 @@ struct PostcardTimelineView: View {
     @ViewBuilder
     private func rowView(for card: Postcard) -> some View {
         if card.state == .unlocked {
-            NavigationLink {
-                PostcardDisplayView(card: card, services: services)
+            Button {
+                deepLink = DeepLinkTarget(id: card.id, card: card)
             } label: {
-                TimelineRowView(card: card, photoStore: services.photoStore)
+                TimelineRowView(card: card)
             }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens this postcard")
         } else {
-            // Sealed cards are not tappable — contents are never revealed before
-            // unlock (§5.3.2). Draft cards never reach the timeline.
-            TimelineRowView(card: card, photoStore: services.photoStore)
+            // Taps explain the lock without opening or loading postcard contents.
+            LockedTimelineRow(card: card)
         }
     }
 
@@ -192,7 +197,7 @@ struct PostcardTimelineView: View {
         VStack(spacing: 16) {
             Text("No postcards yet.").font(Tokens.Font.headline)
             Text("Write one to your future self.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Tokens.Color.chromeText)
             Button("Create a postcard") { showComposer = true }
                 .font(Tokens.Font.button)
                 .buttonStyle(.borderedProminent)
@@ -205,7 +210,7 @@ struct PostcardTimelineView: View {
                 .font(Tokens.Font.footnote)
             Spacer(minLength: 8)
             Button("Settings") { openSettings() }
-                .font(Tokens.Font.footnote)
+                .font(Tokens.Font.button)
         }
         .padding(8)
         .frame(maxWidth: .infinity)
@@ -294,7 +299,7 @@ struct PostcardTimelineView: View {
     #if DEBUG
     // TODO: remove before release
     /// Seals a real card 20 seconds out so the sweep can be watched on device:
-    /// background/foreground (or tap Sweep) after 20s and it flips to ✅.
+    /// background/foreground (or tap Sweep) after 20s and it shows the open envelope.
     private func seedDebugCard() async {
         await services.clock.syncFromServer()
         guard case .trusted(let now) = services.clock.now() else {
@@ -319,71 +324,135 @@ struct PostcardTimelineView: View {
 
 // MARK: - Row
 
-private struct TimelineRowView: View {
-
+private struct LockedTimelineRow: View {
     let card: Postcard
-    let photoStore: PhotoStore
 
-    @State private var thumbnail: UIImage?
+    @State private var tapCount = 0
+    @State private var showsFeedback = false
 
     var body: some View {
-        let title = card.title.isEmpty ? "(untitled)" : card.title
-        HStack(spacing: 12) {
-            switch card.state {
-            case .unlocked:
-                if !card.photos.isEmpty {
-                    thumbnailView
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("✅ \(title)")
-                        .font(Tokens.Font.headline)
-                    Text("Opened")
-                        .font(Tokens.Font.caption)
-                        .foregroundStyle(.secondary)
-                }
-            case .sealed:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("🔒 \(title)")
-                        .font(Tokens.Font.headline)
-                    Text("Locked until \(unlockText)")
-                        .font(Tokens.Font.caption)
-                        .foregroundStyle(.secondary)
-                }
-            case .draft:
-                EmptyView()
-            }
+        Button {
+            showsFeedback = true
+            tapCount += 1
+        } label: {
+            TimelineRowView(card: card, showsLockedFeedback: showsFeedback,
+                            shakeTrigger: tapCount)
         }
-        .task(id: card.id) {
-            // Load a thumbnail ONLY for unlocked cards — a sealed card must never
-            // touch its photo bytes (§5.3.2).
-            guard card.state == .unlocked,
-                  thumbnail == nil,
-                  let first = card.photos.min(by: { $0.order < $1.order })
-            else { return }
-            if let data = photoStore.loadData(fileName: first.fileName) {
-                thumbnail = UIImage(data: data)
+        .buttonStyle(.plain)
+        .accessibilityHint("Shows when this postcard will unlock")
+        .task(id: tapCount) {
+            guard tapCount > 0 else { return }
+            do {
+                try await Task.sleep(for: .seconds(3))
+                showsFeedback = false
+            } catch {
+                // A new tap restarts the message timer; leaving cancels it.
             }
         }
     }
+}
 
-    @ViewBuilder
-    private var thumbnailView: some View {
-        if let thumbnail {
-            Image(uiImage: thumbnail)
+private struct TimelineRowView: View {
+
+    let card: Postcard
+    var showsLockedFeedback = false
+    var shakeTrigger = 0
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Tokens.Space.lg) {
+            Image(card.state == .unlocked ? "EnvelopeOpen" : "EnvelopeClosed")
                 .resizable()
-                .scaledToFill()
-                .frame(width: 44, height: 55)
-                .clipped()
-        } else {
-            Rectangle()
-                .fill(.gray.opacity(0.3))
-                .frame(width: 44, height: 55)
+                .scaledToFit()
+                .frame(width: Tokens.Timeline.envelopeWidth,
+                       height: Tokens.Timeline.envelopeHeight)
+                .keyframeAnimator(initialValue: CGFloat.zero, trigger: shakeTrigger) { content, offset in
+                    content.offset(x: reduceMotion ? 0 : offset)
+                } keyframes: { _ in
+                    CubicKeyframe(-Tokens.Timeline.shakeDistance, duration: 0.08)
+                    CubicKeyframe(Tokens.Timeline.shakeDistance, duration: 0.10)
+                    CubicKeyframe(-Tokens.Timeline.shakeDistance / 2, duration: 0.09)
+                    CubicKeyframe(Tokens.Timeline.shakeDistance / 2, duration: 0.08)
+                    CubicKeyframe(0, duration: 0.10)
+                }
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
+                TimelineTitle(text: card.title.isEmpty ? "(untitled)" : card.title)
+                Text(showsLockedFeedback ? "Still sealed until \(unlockText)" : "Unlock date: \(unlockText)")
+                    .font(Tokens.Font.timelineDate)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .foregroundStyle(Tokens.Color.inkEspresso)
+        .frame(maxWidth: Tokens.Timeline.maxRowWidth, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(card.state == .unlocked ? "Unlocked" : "Locked")
     }
 
     private var unlockText: String {
         guard let date = card.unlockDate else { return "—" }
-        return date.formatted(date: .abbreviated, time: .shortened)
+        return date.formatted(.dateTime.month(.twoDigits).day(.twoDigits).year(.twoDigits).hour().minute())
+    }
+}
+
+/// Truncates at a word boundary so the second line never ends with half a word.
+private struct TimelineTitle: UIViewRepresentable {
+    let text: String
+    @ScaledMetric(relativeTo: .title2) private var fontSize = Tokens.Font.timelineTitleSize
+
+    func makeUIView(context: Context) -> UILabel {
+        let label = UILabel()
+        label.numberOfLines = 2
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return label
+    }
+
+    func updateUIView(_ label: UILabel, context: Context) {
+        label.font = UIFont(name: Tokens.Font.Family.display, size: fontSize)
+            ?? .systemFont(ofSize: fontSize)
+        label.textColor = UIColor(Tokens.Color.inkEspresso)
+        label.text = text
+        label.accessibilityLabel = text
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView label: UILabel,
+                      context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0 else { return nil }
+        let font = label.font!
+        let maxHeight = ceil(font.lineHeight * 2)
+        func height(of value: String) -> CGFloat {
+            ceil((value as NSString).boundingRect(
+                with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font], context: nil
+            ).height)
+        }
+
+        var displayed = text
+        if height(of: text) > maxHeight {
+            let words = text.split(whereSeparator: \.isWhitespace)
+            var lower = 0
+            var upper = words.count
+            while lower < upper {
+                let count = (lower + upper + 1) / 2
+                let candidate = words.prefix(count).joined(separator: " ") + "…"
+                if height(of: candidate) <= maxHeight {
+                    lower = count
+                } else {
+                    upper = count - 1
+                }
+            }
+            displayed = words.prefix(lower).joined(separator: " ") + "…"
+        }
+        label.text = displayed
+        return CGSize(width: width, height: min(height(of: displayed), maxHeight))
     }
 }
 
@@ -421,7 +490,7 @@ private struct LockedDeleteConfirmView: View {
 
             if let date = card.unlockDate {
                 Text("Unlocks \(date.formatted(date: .abbreviated, time: .shortened))")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Tokens.Color.chromeText)
             }
 
             Text("You won’t be able to see what’s inside first. This can’t be undone.")
@@ -429,11 +498,11 @@ private struct LockedDeleteConfirmView: View {
 
             Text(isPressing ? "Keep holding…" : "Press and hold to delete")
                 .font(Tokens.Font.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Tokens.Color.chromeText)
 
             Text("Hold to delete")
                 .font(Tokens.Font.button)
-                .foregroundStyle(.white)
+                .foregroundStyle(Tokens.Color.chromeText)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 10).fill(.red))
@@ -443,6 +512,7 @@ private struct LockedDeleteConfirmView: View {
                 }, perform: onConfirm)
 
             Button("Cancel", role: .cancel) { onCancel() }
+                .font(Tokens.Font.button)
         }
         .padding()
         .presentationDetents([.medium])
@@ -458,16 +528,19 @@ private struct NotificationPrimingView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("🔔").font(.largeTitle)
+            Image(systemName: "bell").font(.largeTitle)
+                .accessibilityHidden(true)
             Text("We’ll tell you when this opens")
                 .font(Tokens.Font.headline)
                 .multilineTextAlignment(.center)
             Text("Turn on notifications and we’ll remind you when your postcard unlocks.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Tokens.Color.chromeText)
             Button("Turn on notifications") { onEnable() }
+                .font(Tokens.Font.button)
                 .buttonStyle(.borderedProminent)
             Button("Not now") { onSkip() }
+                .font(Tokens.Font.button)
         }
         .padding()
         .presentationDetents([.medium])

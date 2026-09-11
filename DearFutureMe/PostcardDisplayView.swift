@@ -43,8 +43,10 @@ struct PostcardDisplayView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)       // §5.6: no top bar
+        .appBackground()
         .overlay(alignment: .topLeading) {
             Button("Done") { dismiss() }
+                .font(Tokens.Font.button)
                 .padding()
         }
         .task { await openGate() }
@@ -93,16 +95,23 @@ struct PostcardDisplayView: View {
             .padding()
             .padding(.top, 44)          // clear the floating Done control
         }
+        .scrollContentBackground(.hidden)
+        .background(.clear)
     }
 
     private var waiting: some View {
         VStack(spacing: 12) {
-            Text("🔒").font(.largeTitle)
+            Image("EnvelopeClosed")
+                .resizable()
+                .scaledToFit()
+                .frame(width: Tokens.Timeline.envelopeWidth,
+                       height: Tokens.Timeline.envelopeHeight)
+                .accessibilityHidden(true)
             Text("Still locked")
             if let date = card.unlockDate {
                 Text("Opens \(date.formatted(date: .abbreviated, time: .shortened))")
                     .font(Tokens.Font.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Tokens.Color.chromeText)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

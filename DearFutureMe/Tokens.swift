@@ -26,7 +26,7 @@ enum Tokens {
         static let paperTaupe  = SwiftUI.Color(hex: 0xA98B76)
         static let accentSage  = SwiftUI.Color(hex: 0xBABF94)
 
-        /// All text, on every surface. Contrast vs. the palette:
+        /// Postcard canvas text. Contrast vs. the palette:
         /// cream 12.19:1 · sage 7.98:1 · tan 6.38:1 · taupe 4.83:1 — all pass WCAG AA.
         /// NEVER use a surface colour for text; they fail against each other
         /// (taupe on cream is only 2.52:1).
@@ -35,8 +35,8 @@ enum Tokens {
         // Chrome — ADAPTS. The desk around the card.
         static let chromeBackground = SwiftUI.Color(light: 0xFAF3E7, dark: 0x1A1512)
         static let chromeSurface    = SwiftUI.Color(light: 0xFFFFFF, dark: 0x241D19)
-        static let chromeText       = SwiftUI.Color(light: 0x2B241E, dark: 0xF0E6D6)
-        static let chromeTextMuted  = SwiftUI.Color(light: 0x6B5D50, dark: 0xA1917F)
+        static let chromeText       = SwiftUI.Color(hex: 0x3A302A)
+        static let chromeTextMuted  = SwiftUI.Color(hex: 0x3A302A)
         static let chromeDivider    = SwiftUI.Color(light: 0xE0D2BC, dark: 0x3A302A)
         static let chromeAccent     = SwiftUI.Color(light: 0xA98B76, dark: 0xBFA28C)
 
@@ -75,7 +75,10 @@ enum Tokens {
         static let footnote     = SwiftUI.Font.custom(Family.chrome, size: 13, relativeTo: .footnote)
         static let caption      = SwiftUI.Font.custom(Family.chrome, size: 13, relativeTo: .caption)
         static let caption2     = SwiftUI.Font.custom(Family.chrome, size: 11, relativeTo: .caption2)
-        static let button       = SwiftUI.Font.custom(Family.chrome, size: 16, relativeTo: .body).weight(.medium)
+        static let button       = SwiftUI.Font.system(size: 16, weight: .medium)
+
+        static let timelineTitleSize: CGFloat = 22
+        static let timelineDate = SwiftUI.Font.custom(Family.display, size: 13, relativeTo: .body)
 
         // Canvas — `relativeTo:` keeps Dynamic Type working with custom faces
         static let cardTitle   = SwiftUI.Font.custom(Family.display,     size: 24, relativeTo: .title2)
@@ -113,6 +116,13 @@ enum Tokens {
         /// "Minimal chrome" is achieved mostly through whitespace — this single
         /// value does more for that feeling than any other change.
         static let screenMargin: CGFloat = 24
+    }
+
+    enum Timeline {
+        static let envelopeWidth: CGFloat = 112
+        static let envelopeHeight: CGFloat = 112
+        static let maxRowWidth: CGFloat = 646
+        static let shakeDistance: CGFloat = 5
     }
 
     // MARK: Corner radii — chrome only

@@ -7,6 +7,8 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+import CoreText
 
 @main
 struct DearFutureMeApp: App {
@@ -21,6 +23,34 @@ struct DearFutureMeApp: App {
     private let services: AppServices
 
     init() {
+        if let fontURL = Bundle.main.url(forResource: "BodoniModa_9pt-Regular", withExtension: "ttf") {
+            CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
+        }
+
+        let chromeTextColor = UIColor(red: 58 / 255, green: 48 / 255, blue: 42 / 255, alpha: 1)
+        let titleFont = UIFont(name: "BodoniModa9pt-Regular", size: 17) ?? .systemFont(ofSize: 17, weight: .semibold)
+        let largeTitleFont = UIFont(name: "BodoniModa9pt-Regular", size: 34) ?? .systemFont(ofSize: 34, weight: .semibold)
+        let navigationTitleAttributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: chromeTextColor,
+            .font: titleFont
+        ]
+        let navigationLargeTitleAttributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: chromeTextColor,
+            .font: largeTitleFont
+        ]
+        let navigationAppearance = UINavigationBarAppearance()
+        navigationAppearance.configureWithTransparentBackground()
+        navigationAppearance.backgroundColor = .clear
+        navigationAppearance.shadowColor = .clear
+        navigationAppearance.titleTextAttributes = navigationTitleAttributes
+        navigationAppearance.largeTitleTextAttributes = navigationLargeTitleAttributes
+
+        UINavigationBar.appearance().standardAppearance = navigationAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navigationAppearance
+        UINavigationBar.appearance().compactAppearance = navigationAppearance
+        UINavigationBar.appearance().titleTextAttributes = navigationTitleAttributes
+        UINavigationBar.appearance().largeTitleTextAttributes = navigationLargeTitleAttributes
+
         do {
             let container = try SwiftDataPostcardStore.makeContainer()
             self.modelContainer = container
@@ -33,7 +63,10 @@ struct DearFutureMeApp: App {
     var body: some Scene {
         WindowGroup {
             PostcardTimelineView(services: services)
-                .font(Tokens.Font.body)
+                .appBackground()
+            .font(Tokens.Font.body)
+            .foregroundStyle(Tokens.Color.chromeText)
+            .tint(Tokens.Color.chromeText)
         }
         .modelContainer(modelContainer)
     }
