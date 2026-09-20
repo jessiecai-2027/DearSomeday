@@ -527,11 +527,44 @@ struct ComposerView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Summary")
                         .font(Tokens.Font.subheadline.weight(.semibold))
-                    Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
-                    Text(selectedTemplate.name)
-                    Text(locationLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No place" : locationLabel)
+
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 16, alignment: .topLeading),
+                            GridItem(.flexible(), spacing: 0, alignment: .topLeading)
+                        ],
+                        alignment: .leading,
+                        spacing: 0
+                    ) {
+                        TemplateCanvasView(
+                            template: selectedTemplate,
+                            photos: photos,
+                            assignments: .constant(assignments),
+                            selectedSlotID: .constant(nil),
+                            showsBarriers: photoBarriersEnabled
+                        )
+                        .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
+                        .allowsHitTesting(false)
+                        .accessibilityLabel("Postcard front preview")
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(title)
+                                    .font(Tokens.Font.headline)
+                            }
+
+                            if backText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("No message")
+                                    .foregroundStyle(Tokens.Color.chromeText.opacity(0.6))
+                            } else {
+                                Text(backText)
+                                    .font(selectedBackFont.bodyFont)
+                                    .foregroundStyle(Color(hex: backTextColorHex))
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
                 }
-                .font(Tokens.Font.caption)
                 .foregroundStyle(Tokens.Color.chromeText)
             }
         }
