@@ -170,6 +170,8 @@ struct ComposerView: View {
             }
             .font(Tokens.Font.button)
             .buttonStyle(.borderedProminent)
+            .tint(Tokens.Color.inkEspresso)
+            .foregroundStyle(Tokens.Color.paperCream)
             .disabled(!canContinue || isSealing)
         }
         .padding()
@@ -323,8 +325,7 @@ struct ComposerView: View {
                         ForEach(ranked) { template in
                             TemplateThumbnail(
                                 template: template,
-                                isSelected: selectedTemplate?.id == template.id,
-                                showsBarriers: photoBarriersEnabled
+                                isSelected: selectedTemplate?.id == template.id
                             )
                             .onTapGesture {
                                 selectTemplate(template)
@@ -746,7 +747,6 @@ struct ComposerView: View {
 private struct TemplateThumbnail: View {
     let template: CardTemplate
     let isSelected: Bool
-    let showsBarriers: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -757,11 +757,7 @@ private struct TemplateThumbnail: View {
                     ForEach(template.slots) { slot in
                         Rectangle()
                             .fill(.gray.opacity(0.25))
-                            .overlay {
-                                if showsBarriers {
-                                    Rectangle().stroke(.white, lineWidth: 2)
-                                }
-                            }
+                            .overlay(Rectangle().stroke(.white, lineWidth: 2))
                             .frame(width: CGFloat(slot.width) * proxy.size.width, height: CGFloat(slot.height) * proxy.size.height)
                             .position(
                                 x: CGFloat(slot.x + slot.width / 2) * proxy.size.width,
