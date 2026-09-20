@@ -235,7 +235,7 @@ struct ComposerView: View {
             .frame(height: 190)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(.gray.opacity(0.08))
+                    .fill(Tokens.Color.paperCream.opacity(0.8))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
@@ -395,27 +395,25 @@ struct ComposerView: View {
                             .stroke(.gray.opacity(0.4), lineWidth: 1)
                     }
 
-                TextEditor(text: $backText)
-                    .font(selectedBackFont.bodyFont)
-                    .foregroundColor(Color(hex: backTextColorHex))
-                    .scrollContentBackground(.hidden)
-                    .background(.clear)
+                PostcardMessageTextView(
+                    text: $backText,
+                    font: selectedBackFont.uiBodyFont,
+                    textColor: UIColor(Color(hex: backTextColorHex)),
+                    isEditable: true
+                )
                     .focused($focusedField, equals: .backText)
                     .onChange(of: backText) { _, new in
                         if new.count > ComposerLogic.maxMessageLength {
                             backText = String(new.prefix(ComposerLogic.maxMessageLength))
                         }
                     }
-                    .padding(.horizontal, 32)
-                    .padding(.top, 42)
-                    .padding(.bottom, 28)
 
                 if backText.isEmpty {
                     Text("Your message")
                         .font(selectedBackFont.bodyFont)
                         .foregroundStyle(Color(hex: backTextColorHex).opacity(0.35))
-                        .padding(.horizontal, 38)
-                        .padding(.top, 50)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 24)
                         .allowsHitTesting(false)
                 }
             }

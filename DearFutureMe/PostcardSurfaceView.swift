@@ -183,31 +183,23 @@ struct PostcardBackView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
+        GeometryReader { _ in
             ZStack(alignment: .topLeading) {
                 Image("PostcardBack")
                     .resizable()
                     .scaledToFit()
 
-                VStack(alignment: .leading, spacing: scaled(12, in: proxy.size)) {
-                    if !text.isEmpty {
-                        Text(text)
-                            .font(font.bodyFont)
-                            .foregroundStyle(textColor)
-                            .lineSpacing(6)
-                            .multilineTextAlignment(.leading)
-                    }
+                if !text.isEmpty {
+                    PostcardMessageTextView(
+                        text: .constant(text),
+                        font: font.uiBodyFont,
+                        textColor: UIColor(textColor),
+                        isEditable: false
+                    )
                 }
-                .padding(.horizontal, scaled(32, in: proxy.size))
-                .padding(.top, scaled(42, in: proxy.size))
-                .padding(.bottom, scaled(28, in: proxy.size))
             }
             .overlay(Rectangle().stroke(Tokens.Color.paperTan.opacity(0.7), lineWidth: 1))
             .clipped()
         }
-    }
-
-    private func scaled(_ value: CGFloat, in size: CGSize) -> CGFloat {
-        value * min(size.width / PostcardCanvasMetrics.maxWidth, 1)
     }
 }

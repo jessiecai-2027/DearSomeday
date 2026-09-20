@@ -47,6 +47,11 @@ enum PostcardBackFont: String, CaseIterable, Identifiable {
         .custom(fontName, size: 17, relativeTo: .body)
     }
 
+    var uiBodyFont: UIFont {
+        let baseFont = UIFont(name: fontName, size: 17) ?? .systemFont(ofSize: 17)
+        return UIFontMetrics(forTextStyle: .body).scaledFont(for: baseFont)
+    }
+
     var previewFont: Font {
         .custom(fontName, size: 19, relativeTo: .body)
     }
