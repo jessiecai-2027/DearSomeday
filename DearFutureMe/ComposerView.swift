@@ -401,6 +401,8 @@ struct ComposerView: View {
                     textColor: UIColor(Color(hex: backTextColorHex)),
                     isEditable: true
                 )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                     .focused($focusedField, equals: .backText)
                     .onChange(of: backText) { _, new in
                         if new.count > ComposerLogic.maxMessageLength {

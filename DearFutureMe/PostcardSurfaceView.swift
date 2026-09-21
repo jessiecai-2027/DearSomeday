@@ -196,6 +196,8 @@ struct PostcardBackView: View {
                         textColor: UIColor(textColor),
                         isEditable: false
                     )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                 }
             }
             .overlay(Rectangle().stroke(Tokens.Color.paperTan.opacity(0.7), lineWidth: 1))

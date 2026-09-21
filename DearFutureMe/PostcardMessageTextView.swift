@@ -17,10 +17,21 @@ struct PostcardMessageTextView: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
         textView.isOpaque = false
+        textView.clipsToBounds = true
+        textView.contentInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.lineBreakMode = .byCharWrapping
+        textView.textContainer.widthTracksTextView = false
+        textView.textContainer.heightTracksTextView = false
+        textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.adjustsFontForContentSizeCategory = true
         textView.autocorrectionType = .yes
         textView.spellCheckingType = .yes
+        textView.showsVerticalScrollIndicator = false
+        textView.showsHorizontalScrollIndicator = false
+        textView.alwaysBounceVertical = false
+        textView.alwaysBounceHorizontal = false
         return textView
     }
 
@@ -35,7 +46,7 @@ struct PostcardMessageTextView: UIViewRepresentable {
         textView.textColor = textColor
         textView.isEditable = isEditable
         textView.isSelectable = isEditable
-        textView.isScrollEnabled = isEditable
+        textView.isScrollEnabled = false
         textView.isUserInteractionEnabled = isEditable
         textView.setNeedsLayout()
     }
@@ -50,11 +61,32 @@ struct PostcardMessageTextView: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text
         }
+
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText replacement: String
+        ) -> Bool {
+            guard
+                let textView = textView as? StampWrappingTextView,
+                let swiftRange = Range(range, in: textView.text)
+            else { return false }
+
+            let proposedText = textView.text.replacingCharacters(in: swiftRange, with: replacement)
+            if (proposedText as NSString).length < (textView.text as NSString).length {
+                return true
+            }
+            return textView.canFit(proposedText)
+        }
     }
 }
 
 final class StampWrappingTextView: UITextView {
     private var exclusionLayoutSize: CGSize = .zero
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -68,6 +100,10 @@ final class StampWrappingTextView: UITextView {
             bottom: edgePadding,
             right: edgePadding
         )
+        textContainer.size = CGSize(
+            width: max(bounds.width - textContainerInset.left - textContainerInset.right, 0),
+            height: max(bounds.height - textContainerInset.top - textContainerInset.bottom, 0)
+        )
 
         // Matches the printed stamp box in the PostcardBack artwork.
         let stampBox = CGRect(
@@ -78,11 +114,41 @@ final class StampWrappingTextView: UITextView {
         )
         let stampPadding = bounds.width * 0.03
         let paddedStampBox = stampBox.insetBy(dx: -stampPadding, dy: -stampPadding)
-        let textContainerStampBox = paddedStampBox.offsetBy(
-            dx: -textContainerInset.left,
-            dy: -textContainerInset.top
+        let textContainerStampBox = CGRect(
+            x: paddedStampBox.minX - textContainerInset.left,
+            y: paddedStampBox.minY - textContainerInset.top,
+            width: bounds.width,
+            height: paddedStampBox.height
         )
 
         textContainer.exclusionPaths = [UIBezierPath(rect: textContainerStampBox)]
+    }
+
+    func canFit(_ proposedText: String) -> Bool {
+        layoutIfNeeded()
+        guard let font else { return true }
+
+        let availableSize = CGSize(
+            width: max(bounds.width - textContainerInset.left - textContainerInset.right, 0),
+            height: max(bounds.height - textContainerInset.top - textContainerInset.bottom, 0)
+        )
+        guard availableSize.width > 0, availableSize.height > 0 else { return false }
+
+        let storage = NSTextStorage(string: proposedText, attributes: [.font: font])
+        let layoutManager = NSLayoutManager()
+        let measuringContainer = NSTextContainer(size: availableSize)
+        measuringContainer.lineFragmentPadding = textContainer.lineFragmentPadding
+        measuringContainer.lineBreakMode = textContainer.lineBreakMode
+        measuringContainer.exclusionPaths = textContainer.exclusionPaths
+        storage.addLayoutManager(layoutManager)
+        layoutManager.addTextContainer(measuringContainer)
+        layoutManager.ensureLayout(for: measuringContainer)
+
+        let glyphRange = layoutManager.glyphRange(for: measuringContainer)
+        let characterRange = layoutManager.characterRange(
+            forGlyphRange: glyphRange,
+            actualGlyphRange: nil
+        )
+        return NSMaxRange(characterRange) >= (proposedText as NSString).length
     }
 }
