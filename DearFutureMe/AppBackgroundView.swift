@@ -26,7 +26,7 @@ extension View {
     func appBackground(
         imageName: String = "MainBackground",
         tintOpacity: Double = 0.55
-g    ) -> some View {
+    ) -> some View {
         background {
             AppBackgroundView(imageName: imageName, tintOpacity: tintOpacity)
         }

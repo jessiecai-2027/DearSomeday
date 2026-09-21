@@ -24,6 +24,8 @@ struct PostcardTimelineView: View {
     @State private var canLoadMore = false
     @State private var isBusy = false
     @State private var isLoadingPage = false
+    @State private var timelineOffset = 0
+    @State private var timelineFilter: PostcardTimelineFilter = .all
 
     @State private var showComposer = false
     @State private var sealedDuringComposer = false
@@ -72,11 +74,14 @@ struct PostcardTimelineView: View {
                 }
             }
             .safeAreaInset(edge: .top) {
-                if notificationsDenied {
-                    deniedBanner
+                VStack(spacing: Tokens.Space.xs) {
+                    if notificationsDenied {
+                        deniedBanner
+                    }
+                    filterControl
                 }
             }
-            .navigationTitle("Postcards")
+            .navigationTitle("Mailbox")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showComposer = true } label: {
@@ -172,6 +177,9 @@ struct PostcardTimelineView: View {
                 services.notificationRouter.pendingCardID = nil
             }
         }
+        .onChange(of: timelineFilter) {
+            Task { await reload() }
+        }
         // Fires on launch; the scenePhase handler covers every later foreground.
         .task { await sweepAndReload() }
         .onChange(of: scenePhase) { _, phase in
@@ -201,14 +209,51 @@ struct PostcardTimelineView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Text("No postcards yet.").font(Tokens.Font.headline)
-            Text("Write one to your future self.")
+            Text(timelineFilter.emptyTitle).font(Tokens.Font.headline)
+            Text(timelineFilter.emptyMessage)
                 .foregroundStyle(Tokens.Color.chromeText)
             Button("Create a postcard") { showComposer = true }
                 .font(Tokens.Font.button)
                 .buttonStyle(.borderedProminent)
         }
         .timelineForegroundShadow()
+    }
+
+    private var filterControl: some View {
+        HStack(spacing: Tokens.Space.xxs) {
+            ForEach(PostcardTimelineFilter.allCases) { filter in
+                Button {
+                    withAnimation(Tokens.Motion.subtle) {
+                        timelineFilter = filter
+                    }
+                } label: {
+                    Image(systemName: filter.symbolName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 34, height: 28)
+                        .foregroundStyle(
+                            timelineFilter == filter
+                                ? Tokens.Color.inkEspresso
+                                : Tokens.Color.chromeTextMuted
+                        )
+                        .background {
+                            if timelineFilter == filter {
+                                Capsule().fill(Tokens.Color.paperTan.opacity(0.72))
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(filter.accessibilityLabel)
+                .accessibilityAddTraits(timelineFilter == filter ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(.thinMaterial, in: Capsule())
+        .overlay {
+            Capsule().stroke(Tokens.Color.chromeDivider.opacity(0.7), lineWidth: 0.5)
+        }
+        .timelineForegroundShadow()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Timeline filter")
     }
 
     private var deniedBanner: some View {
@@ -260,9 +305,13 @@ struct PostcardTimelineView: View {
     /// Resets to the first page. Called after a sweep, a compose, or a delete —
     /// any change that can reorder or shrink the list.
     private func reload() async {
-        let page = (try? await services.store.timeline(offset: 0, limit: Self.pageSize)) ?? []
-        cards = page
-        canLoadMore = (page.count == Self.pageSize)
+        let filter = timelineFilter
+        let page = await filteredPage(for: filter, startingAt: 0)
+        guard timelineFilter == filter else { return }
+
+        cards = page.cards
+        timelineOffset = page.nextOffset
+        canLoadMore = page.hasMore
     }
 
     private func maybeLoadMore(after card: Postcard) {
@@ -275,9 +324,42 @@ struct PostcardTimelineView: View {
         isLoadingPage = true
         defer { isLoadingPage = false }
 
-        let page = (try? await services.store.timeline(offset: cards.count, limit: Self.pageSize)) ?? []
-        cards.append(contentsOf: page)
-        canLoadMore = (page.count == Self.pageSize)
+        let filter = timelineFilter
+        let page = await filteredPage(for: filter, startingAt: timelineOffset)
+        guard timelineFilter == filter else { return }
+
+        cards.append(contentsOf: page.cards)
+        timelineOffset = page.nextOffset
+        canLoadMore = page.hasMore
+    }
+
+    /// Reads source pages until it has a useful page for the active filter or
+    /// reaches the end. This matters for "delivered": sealed cards sort first,
+    /// so filtering only the first raw page could falsely show an empty list.
+    private func filteredPage(
+        for filter: PostcardTimelineFilter,
+        startingAt initialOffset: Int
+    ) async -> FilteredTimelinePage {
+        var offset = initialOffset
+        var matches: [Postcard] = []
+
+        while matches.count < Self.pageSize {
+            guard let source = try? await services.store.timeline(
+                offset: offset,
+                limit: Self.pageSize
+            ) else {
+                return FilteredTimelinePage(cards: matches, nextOffset: offset, hasMore: false)
+            }
+
+            offset += source.count
+            matches.append(contentsOf: source.filter(filter.includes))
+
+            if source.count < Self.pageSize {
+                return FilteredTimelinePage(cards: matches, nextOffset: offset, hasMore: false)
+            }
+        }
+
+        return FilteredTimelinePage(cards: matches, nextOffset: offset, hasMore: true)
     }
 
     // MARK: - Notifications (§5.7)
@@ -488,6 +570,12 @@ private struct DeleteTarget: Identifiable {
 private struct DeepLinkTarget: Identifiable {
     let id: UUID
     let card: Postcard
+}
+
+private struct FilteredTimelinePage {
+    let cards: [Postcard]
+    let nextOffset: Int
+    let hasMore: Bool
 }
 
 /// The §5.3 locked-card confirmation: shows the title and unlock date, states
