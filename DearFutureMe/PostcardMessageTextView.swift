@@ -42,7 +42,7 @@ struct PostcardMessageTextView: UIViewRepresentable {
             textView.text = text
         }
 
-        textView.font = font
+        textView.setFont(font, fitting: text)
         textView.textColor = textColor
         textView.isEditable = isEditable
         textView.isSelectable = isEditable
@@ -120,6 +120,9 @@ struct PostcardMessageTextView: UIViewRepresentable {
 
 final class StampWrappingTextView: UITextView {
     private var exclusionLayoutSize: CGSize = .zero
+    private var requestedFont: UIFont?
+    private var textToFit = ""
+    private let minimumFontSize: CGFloat = 8
 
     override var intrinsicContentSize: CGSize {
         CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
@@ -159,16 +162,69 @@ final class StampWrappingTextView: UITextView {
         )
 
         textContainer.exclusionPaths = [UIBezierPath(rect: textContainerStampBox)]
+        fitRequestedFont()
+    }
+
+    func setFont(_ font: UIFont, fitting text: String) {
+        requestedFont = font
+        textToFit = text
+        fitRequestedFont()
     }
 
     func canFit(_ proposedText: String) -> Bool {
         layoutIfNeeded()
         guard let font else { return true }
 
-        let availableSize = CGSize(
+        return canFit(proposedText, using: font)
+    }
+
+    private func fitRequestedFont() {
+        guard let requestedFont else { return }
+
+        let availableSize = availableTextSize
+        guard availableSize.width > 0, availableSize.height > 0 else {
+            font = requestedFont
+            return
+        }
+
+        if canFit(textToFit, using: requestedFont) {
+            if font != requestedFont {
+                font = requestedFont
+            }
+            return
+        }
+
+        var fittingSize = min(minimumFontSize, requestedFont.pointSize)
+        var overflowingSize = requestedFont.pointSize
+
+        // Find the largest readable size that preserves the complete message.
+        // Font changes never mutate the binding; they only adjust presentation.
+        for _ in 0..<12 {
+            let candidateSize = (fittingSize + overflowingSize) / 2
+            let candidateFont = requestedFont.withSize(candidateSize)
+            if canFit(textToFit, using: candidateFont) {
+                fittingSize = candidateSize
+            } else {
+                overflowingSize = candidateSize
+            }
+        }
+
+        let fittedFont = requestedFont.withSize(fittingSize)
+        if font?.fontName != fittedFont.fontName || abs((font?.pointSize ?? 0) - fittedFont.pointSize) > 0.01 {
+            font = fittedFont
+        }
+    }
+
+    private var availableTextSize: CGSize {
+        CGSize(
             width: max(bounds.width - textContainerInset.left - textContainerInset.right, 0),
             height: max(bounds.height - textContainerInset.top - textContainerInset.bottom, 0)
         )
+    }
+
+    private func canFit(_ proposedText: String, using font: UIFont) -> Bool {
+        let availableSize = availableTextSize
+
         guard availableSize.width > 0, availableSize.height > 0 else { return false }
 
         let storage = NSTextStorage(string: proposedText, attributes: [.font: font])
