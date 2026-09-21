@@ -123,6 +123,9 @@ enum Tokens {
         static let envelopeHeight: CGFloat = 112
         static let maxRowWidth: CGFloat = 646
         static let shakeDistance: CGFloat = 5
+        static let envelopeTint = SwiftUI.Color(hex: 0xFFF2DD)
+        static let envelopeSaturation: Double = 0.88
+        static let envelopeBrightness: Double = 0.06
     }
 
     // MARK: Corner radii — chrome only
@@ -199,6 +202,13 @@ enum Tokens {
 // MARK: - Conveniences
 
 extension View {
+    /// A warm, lighter paper treatment that preserves the artwork's alpha and detail.
+    func envelopePaperTone() -> some View {
+        saturation(Tokens.Timeline.envelopeSaturation)
+            .colorMultiply(Tokens.Timeline.envelopeTint)
+            .brightness(Tokens.Timeline.envelopeBrightness)
+    }
+
     /// Chrome shadow. Do NOT use on canvas elements — see Tokens.Shadow.
     func chromeShadow(_ style: Tokens.Shadow.Style) -> some View {
         shadow(color: style.color, radius: style.radius, y: style.y)

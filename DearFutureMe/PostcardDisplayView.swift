@@ -106,6 +106,7 @@ struct PostcardDisplayView: View {
             Image("EnvelopeClosed")
                 .resizable()
                 .scaledToFit()
+                .envelopePaperTone()
                 .frame(width: Tokens.Timeline.envelopeWidth,
                        height: Tokens.Timeline.envelopeHeight)
                 .accessibilityHidden(true)

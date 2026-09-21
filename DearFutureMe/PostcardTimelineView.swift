@@ -188,9 +188,12 @@ struct PostcardTimelineView: View {
             Text(timelineFilter.emptyTitle).font(Tokens.Font.headline)
             Text(timelineFilter.emptyMessage)
                 .foregroundStyle(Tokens.Color.chromeText)
-            Button("Create a postcard") { showComposer = true }
-                .font(Tokens.Font.button)
-                .buttonStyle(.borderedProminent)
+            Button { showComposer = true } label: {
+                Text("Create a postcard")
+                    .font(Tokens.Font.button)
+                    .foregroundStyle(Tokens.Color.paperCream)
+            }
+            .buttonStyle(.borderedProminent)
         }
         .timelineForegroundShadow()
     }
@@ -496,6 +499,7 @@ private struct TimelineRowView: View {
             Image(card.state == .unlocked ? "EnvelopeOpen" : "EnvelopeClosed")
                 .resizable()
                 .scaledToFit()
+                .envelopePaperTone()
                 .frame(width: Tokens.Timeline.envelopeWidth,
                        height: Tokens.Timeline.envelopeHeight)
                 .keyframeAnimator(initialValue: CGFloat.zero, trigger: shakeTrigger) { content, offset in
