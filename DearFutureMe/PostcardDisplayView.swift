@@ -96,6 +96,7 @@ struct PostcardDisplayView: View {
             .padding()
             .padding(.top, 44)          // clear the floating Done control
         }
+        .scrollDisabled(true)
         .scrollContentBackground(.hidden)
         .background(.clear)
     }

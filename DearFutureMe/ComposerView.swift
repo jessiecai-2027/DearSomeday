@@ -91,7 +91,10 @@ struct ComposerView: View {
                 }
             }
         }
-        .appBackground()
+        .appBackground(
+            imageName: "PostcardCreationBackground",
+            tintOpacity: 0.68
+        )
         .interactiveDismissDisabled(isSealing)
         .onChange(of: pickerItems) { _, items in
             Task { await importPicked(items) }
@@ -422,6 +425,11 @@ struct ComposerView: View {
             .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
             .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
             .clipped()
+            .shadow(
+                color: Tokens.Shadow.raised.color,
+                radius: Tokens.Shadow.raised.radius,
+                y: Tokens.Shadow.raised.y
+            )
             .frame(maxWidth: .infinity)
 
             fontOptions

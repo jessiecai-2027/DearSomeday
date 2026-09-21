@@ -1,16 +1,19 @@
 import SwiftUI
 
 struct AppBackgroundView: View {
+    var imageName = "MainBackground"
+    var tintOpacity = 0.55
+
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Image("MainBackground")
+                Image(imageName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: proxy.size.width, height: proxy.size.height)
 
                 Tokens.Color.paperCream
-                    .opacity(0.55)
+                    .opacity(tintOpacity)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
@@ -20,9 +23,12 @@ struct AppBackgroundView: View {
 }
 
 extension View {
-    func appBackground() -> some View {
+    func appBackground(
+        imageName: String = "MainBackground",
+        tintOpacity: Double = 0.55
+g    ) -> some View {
         background {
-            AppBackgroundView()
+            AppBackgroundView(imageName: imageName, tintOpacity: tintOpacity)
         }
     }
 }
