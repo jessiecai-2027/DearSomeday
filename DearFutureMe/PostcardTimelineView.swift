@@ -78,34 +78,10 @@ struct PostcardTimelineView: View {
                     if notificationsDenied {
                         deniedBanner
                     }
-                    filterControl
+                    mailboxHeader
                 }
             }
-            .navigationTitle("Mailbox")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showComposer = true } label: {
-                        Image(systemName: "plus")
-                            .timelineForegroundShadow()
-                    }
-                        .accessibilityLabel("New postcard")
-                }
-            }
-            #if DEBUG
-            // TODO: remove before release (debug-only, like the §5.7 test button)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Sweep") { Task { await sweepAndReload() } }
-                        .font(Tokens.Font.button)
-                        .timelineForegroundShadow()
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Seed 20s") { Task { await seedDebugCard() } }
-                        .font(Tokens.Font.button)
-                        .timelineForegroundShadow()
-                }
-            }
-            #endif
+            .toolbar(.hidden, for: .navigationBar)
             .confirmationDialog(
                 "Delete this postcard?",
                 isPresented: Binding(
@@ -217,6 +193,41 @@ struct PostcardTimelineView: View {
                 .buttonStyle(.borderedProminent)
         }
         .timelineForegroundShadow()
+    }
+
+    private var mailboxHeader: some View {
+        HStack(spacing: Tokens.Space.sm) {
+            Text("Mailbox")
+                .font(Tokens.Font.screenTitle)
+                .foregroundStyle(Tokens.Color.inkEspresso)
+                .lineLimit(1)
+                .timelineForegroundShadow()
+
+            Spacer(minLength: Tokens.Space.xs)
+
+            #if DEBUG
+            // Keep debug utilities available without adding a second toolbar row.
+            Menu {
+                Button("Sweep") { Task { await sweepAndReload() } }
+                Button("Seed 20s") { Task { await seedDebugCard() } }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .frame(width: 28, height: 28)
+            }
+            .accessibilityLabel("Debug tools")
+            #endif
+
+            Button { showComposer = true } label: {
+                Image(systemName: "plus")
+                    .frame(width: 28, height: 28)
+                    .timelineForegroundShadow()
+            }
+            .accessibilityLabel("New postcard")
+
+            filterControl
+        }
+        .screenMargins()
+        .padding(.vertical, Tokens.Space.xxs)
     }
 
     private var filterControl: some View {
