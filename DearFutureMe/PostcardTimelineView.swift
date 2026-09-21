@@ -41,6 +41,7 @@ struct PostcardTimelineView: View {
             List {
                 ForEach(cards, id: \.id) { card in
                     rowView(for: card)
+                        .timelineForegroundShadow()
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(
@@ -78,7 +79,10 @@ struct PostcardTimelineView: View {
             .navigationTitle("Postcards")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showComposer = true } label: { Image(systemName: "plus") }
+                    Button { showComposer = true } label: {
+                        Image(systemName: "plus")
+                            .timelineForegroundShadow()
+                    }
                         .accessibilityLabel("New postcard")
                 }
             }
@@ -88,10 +92,12 @@ struct PostcardTimelineView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Sweep") { Task { await sweepAndReload() } }
                         .font(Tokens.Font.button)
+                        .timelineForegroundShadow()
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Seed 20s") { Task { await seedDebugCard() } }
                         .font(Tokens.Font.button)
+                        .timelineForegroundShadow()
                 }
             }
             #endif
@@ -202,6 +208,7 @@ struct PostcardTimelineView: View {
                 .font(Tokens.Font.button)
                 .buttonStyle(.borderedProminent)
         }
+        .timelineForegroundShadow()
     }
 
     private var deniedBanner: some View {
@@ -212,6 +219,7 @@ struct PostcardTimelineView: View {
             Button("Settings") { openSettings() }
                 .font(Tokens.Font.button)
         }
+        .timelineForegroundShadow()
         .padding(8)
         .frame(maxWidth: .infinity)
         .background(.yellow.opacity(0.3))
@@ -320,6 +328,17 @@ struct PostcardTimelineView: View {
         }
     }
     #endif
+}
+
+private extension View {
+    func timelineForegroundShadow() -> some View {
+        shadow(
+            color: Tokens.Color.inkEspresso.opacity(0.22),
+            radius: 1.25,
+            x: 0,
+            y: 1
+        )
+    }
 }
 
 // MARK: - Row

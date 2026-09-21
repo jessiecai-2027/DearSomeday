@@ -30,13 +30,19 @@ struct DearFutureMeApp: App {
         let chromeTextColor = UIColor(red: 58 / 255, green: 48 / 255, blue: 42 / 255, alpha: 1)
         let titleFont = UIFont(name: "BodoniModa9pt-Regular", size: 17) ?? .systemFont(ofSize: 17, weight: .semibold)
         let largeTitleFont = UIFont(name: "BodoniModa9pt-Regular", size: 34) ?? .systemFont(ofSize: 34, weight: .semibold)
+        let titleShadow = NSShadow()
+        titleShadow.shadowColor = chromeTextColor.withAlphaComponent(0.22)
+        titleShadow.shadowBlurRadius = 1.25
+        titleShadow.shadowOffset = CGSize(width: 0, height: 1)
         let navigationTitleAttributes: [NSAttributedString.Key: Any] = [
             .foregroundColor: chromeTextColor,
-            .font: titleFont
+            .font: titleFont,
+            .shadow: titleShadow
         ]
         let navigationLargeTitleAttributes: [NSAttributedString.Key: Any] = [
             .foregroundColor: chromeTextColor,
-            .font: largeTitleFont
+            .font: largeTitleFont,
+            .shadow: titleShadow
         ]
         let navigationAppearance = UINavigationBarAppearance()
         navigationAppearance.configureWithTransparentBackground()

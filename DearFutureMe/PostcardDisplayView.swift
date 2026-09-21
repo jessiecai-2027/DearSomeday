@@ -89,6 +89,7 @@ struct PostcardDisplayView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text(card.title.isEmpty ? "(untitled)" : card.title)
                     .font(Tokens.Font.screenTitle)
+                    .lineSpacing(-6)
 
                 PostcardSurfaceView(card: card, photosByID: photosByID, photosByOrder: photosByOrder)
             }
