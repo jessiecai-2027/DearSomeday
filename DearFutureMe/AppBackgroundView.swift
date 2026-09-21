@@ -10,7 +10,7 @@ struct AppBackgroundView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
 
                 Tokens.Color.paperCream
-                    .opacity(0.30)
+                    .opacity(0.55)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
