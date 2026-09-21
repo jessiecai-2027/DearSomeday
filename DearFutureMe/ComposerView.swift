@@ -528,41 +528,29 @@ struct ComposerView: View {
                     Text("Summary")
                         .font(Tokens.Font.subheadline.weight(.semibold))
 
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: 16, alignment: .topLeading),
-                            GridItem(.flexible(), spacing: 0, alignment: .topLeading)
-                        ],
-                        alignment: .leading,
-                        spacing: 0
-                    ) {
-                        TemplateCanvasView(
-                            template: selectedTemplate,
-                            photos: photos,
-                            assignments: .constant(assignments),
-                            selectedSlotID: .constant(nil),
-                            showsBarriers: photoBarriersEnabled
-                        )
-                        .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
-                        .allowsHitTesting(false)
-                        .accessibilityLabel("Postcard front preview")
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text(title)
-                                    .font(Tokens.Font.headline)
-                            }
-
-                            if backText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text("No message")
-                                    .foregroundStyle(Tokens.Color.chromeText.opacity(0.6))
-                            } else {
-                                Text(backText)
-                                    .font(selectedBackFont.bodyFont)
-                                    .foregroundStyle(Color(hex: backTextColorHex))
-                            }
+                    PostcardSummaryTextView(
+                        title: title,
+                        message: backText,
+                        messageFont: selectedBackFont.uiBodyFont,
+                        messageColor: UIColor(Color(hex: backTextColorHex))
+                    )
+                    .overlay(alignment: .topLeading) {
+                        GeometryReader { proxy in
+                            let previewWidth = max((proxy.size.width - 16) / 2, 0)
+                            TemplateCanvasView(
+                                template: selectedTemplate,
+                                photos: photos,
+                                assignments: .constant(assignments),
+                                selectedSlotID: .constant(nil),
+                                showsBarriers: photoBarriersEnabled
+                            )
+                            .frame(
+                                width: previewWidth,
+                                height: previewWidth / PostcardCanvasMetrics.aspectRatio
+                            )
+                            .accessibilityLabel("Postcard front preview")
                         }
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .allowsHitTesting(false)
                     }
                 }
                 .foregroundStyle(Tokens.Color.chromeText)
