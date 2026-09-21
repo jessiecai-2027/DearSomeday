@@ -76,7 +76,44 @@ struct PostcardMessageTextView: UIViewRepresentable {
             if (proposedText as NSString).length < (textView.text as NSString).length {
                 return true
             }
-            return textView.canFit(proposedText)
+            if textView.canFit(proposedText) {
+                return true
+            }
+
+            let replacementCharacters = Array(replacement)
+            guard replacementCharacters.count > 1 else { return false }
+
+            var lowerBound = 0
+            var upperBound = replacementCharacters.count
+            while lowerBound < upperBound {
+                let candidateLength = (lowerBound + upperBound + 1) / 2
+                let candidateReplacement = String(replacementCharacters.prefix(candidateLength))
+                let candidateText = textView.text.replacingCharacters(
+                    in: swiftRange,
+                    with: candidateReplacement
+                )
+
+                if textView.canFit(candidateText) {
+                    lowerBound = candidateLength
+                } else {
+                    upperBound = candidateLength - 1
+                }
+            }
+
+            guard lowerBound > 0 else { return false }
+
+            let acceptedReplacement = String(replacementCharacters.prefix(lowerBound))
+            let acceptedText = textView.text.replacingCharacters(
+                in: swiftRange,
+                with: acceptedReplacement
+            )
+            textView.text = acceptedText
+            textView.selectedRange = NSRange(
+                location: range.location + (acceptedReplacement as NSString).length,
+                length: 0
+            )
+            parent.text = acceptedText
+            return false
         }
     }
 }
