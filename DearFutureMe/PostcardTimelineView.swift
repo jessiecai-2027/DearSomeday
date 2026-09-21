@@ -227,7 +227,26 @@ struct PostcardTimelineView: View {
             filterControl
         }
         .screenMargins()
-        .padding(.vertical, Tokens.Space.xxs)
+        .padding(.top, Tokens.Space.xxs)
+        .padding(.bottom, Tokens.Space.sm)
+        .background {
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Tokens.Color.paperCream.opacity(0.48)
+            }
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.62),
+                        .init(color: .clear, location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .ignoresSafeArea(edges: .top)
+        }
     }
 
     private var filterControl: some View {
