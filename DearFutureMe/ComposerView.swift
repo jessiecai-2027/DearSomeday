@@ -24,6 +24,14 @@ private struct PostcardCanvasSizePreferenceKey: PreferenceKey {
     }
 }
 
+private struct StampPickerAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect?
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
 struct ComposerView: View {
 
     let services: AppServices
@@ -124,6 +132,10 @@ struct ComposerView: View {
             imageName: "PostcardCreationBackground",
             tintOpacity: 0.68
         )
+        .coordinateSpace(name: "composerRoot")
+        .overlayPreferenceValue(StampPickerAnchorPreferenceKey.self) { anchor in
+            stampPickerOverlay(anchor: anchor)
+        }
         .interactiveDismissDisabled(isSealing)
         .onChange(of: pickerItems) { _, items in
             Task { await importPicked(items) }
@@ -459,6 +471,23 @@ struct ComposerView: View {
                         .allowsHitTesting(false)
                 }
 
+                if selectedStamp == nil {
+                    GeometryReader { proxy in
+                        let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                        Text("click to choose stamp...")
+                            .font(Tokens.Font.caption2)
+                            .foregroundStyle(Color.secondary.opacity(0.68))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.72)
+                            .padding(4)
+                            .frame(width: frame.width, height: frame.height)
+                            .position(x: frame.midX, y: frame.midY)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+
                 if let selectedStamp {
                     GeometryReader { proxy in
                         let frame = PostcardBackLayout.stampFrame(in: proxy.size)
@@ -475,9 +504,16 @@ struct ComposerView: View {
 
                 GeometryReader { proxy in
                     let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                    let canvasFrame = proxy.frame(in: .named("composerRoot"))
+                    let anchorFrame = frame.offsetBy(
+                        dx: canvasFrame.minX,
+                        dy: canvasFrame.minY
+                    )
                     Button {
                         focusedField = nil
-                        isStampPickerPresented = true
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                            isStampPickerPresented = true
+                        }
                     } label: {
                         Color.clear
                             .frame(width: frame.width, height: frame.height)
@@ -490,15 +526,10 @@ struct ComposerView: View {
                             ?? "Choose stamp, required"
                     )
                     .accessibilityHint("Opens the stamp palette")
-                    .popover(
-                        isPresented: $isStampPickerPresented,
-                        attachmentAnchor: .rect(.bounds),
-                        arrowEdge: .top
-                    ) {
-                        StampPickerPopover(selectedStampID: selectedStampID) { option in
-                            selectStamp(option)
-                        }
-                    }
+                    .preference(
+                        key: StampPickerAnchorPreferenceKey.self,
+                        value: anchorFrame
+                    )
                 }
             }
             .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
@@ -599,6 +630,61 @@ struct ComposerView: View {
 
     private var selectedStamp: StampOption? {
         StampCatalog.option(withID: selectedStampID)
+    }
+
+    @ViewBuilder
+    private func stampPickerOverlay(anchor: CGRect?) -> some View {
+        GeometryReader { proxy in
+            if isStampPickerPresented, let sourceFrame = anchor {
+                let paletteWidth: CGFloat = 264
+                let screenMargin: CGFloat = 12
+                let arrowWidth: CGFloat = 20
+                let minimumX = screenMargin
+                let maximumX = max(minimumX, proxy.size.width - paletteWidth - screenMargin)
+                let paletteX = min(
+                    max(sourceFrame.midX - paletteWidth / 2, minimumX),
+                    maximumX
+                )
+                let arrowX = min(
+                    max(sourceFrame.midX - paletteX - arrowWidth / 2, 14),
+                    paletteWidth - arrowWidth - 14
+                )
+
+                ZStack(alignment: .topLeading) {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.16)) {
+                                isStampPickerPresented = false
+                            }
+                        }
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        StampPopoverArrow()
+                            .fill(.regularMaterial)
+                            .frame(width: arrowWidth, height: 11)
+                            .padding(.leading, arrowX)
+
+                        StampPickerPopover(selectedStampID: selectedStampID) { option in
+                            selectStamp(option)
+                        }
+                        .background(
+                            .regularMaterial,
+                            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        )
+                        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+                    }
+                    .frame(width: paletteWidth, alignment: .leading)
+                    .offset(x: paletteX, y: sourceFrame.maxY - 5)
+                    .transition(
+                        .scale(scale: 0.94, anchor: .topTrailing)
+                            .combined(with: .opacity)
+                    )
+                }
+            }
+        }
     }
 
     private var stampScale: CGFloat {

@@ -41,6 +41,17 @@ struct PostcardStampImage: View {
     }
 }
 
+struct StampPopoverArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.closeSubpath()
+        }
+    }
+}
+
 struct StampPickerPopover: View {
     let selectedStampID: String?
     let onSelect: (StampOption) -> Void
@@ -96,6 +107,5 @@ struct StampPickerPopover: View {
         }
         .padding(Tokens.Space.md)
         .frame(width: 264)
-        .presentationCompactAdaptation(.popover)
     }
 }
