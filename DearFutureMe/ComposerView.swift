@@ -677,7 +677,7 @@ struct ComposerView: View {
                         .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
                     }
                     .frame(width: paletteWidth, alignment: .leading)
-                    .offset(x: paletteX, y: sourceFrame.maxY - 5)
+                    .offset(x: paletteX, y: sourceFrame.maxY - 55)
                     .transition(
                         .scale(scale: 0.94, anchor: .topTrailing)
                             .combined(with: .opacity)
