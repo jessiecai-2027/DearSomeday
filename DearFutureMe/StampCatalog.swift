@@ -41,61 +41,61 @@ struct PostcardStampImage: View {
     }
 }
 
-struct StampPickerSheet: View {
+struct StampPickerPopover: View {
     let selectedStampID: String?
     let onSelect: (StampOption) -> Void
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 88, maximum: 118), spacing: Tokens.Space.md),
-    ]
+    private let columns = Array(
+        repeating: GridItem(.flexible(), spacing: Tokens.Space.sm),
+        count: 3
+    )
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: Tokens.Space.md) {
-                    ForEach(StampCatalog.all) { option in
-                        Button {
-                            onSelect(option)
-                        } label: {
-                            ZStack(alignment: .topTrailing) {
-                                PostcardStampImage(option: option)
-                                    .padding(Tokens.Space.sm)
-                                    .frame(maxWidth: .infinity)
-                                    .aspectRatio(1, contentMode: .fit)
+        VStack(alignment: .leading, spacing: Tokens.Space.sm) {
+            Text("Choose a Stamp")
+                .font(Tokens.Font.headline)
 
-                                if selectedStampID == option.id {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .symbolRenderingMode(.palette)
-                                        .foregroundStyle(.white, .blue)
-                                        .font(.system(size: 24, weight: .semibold))
-                                        .padding(Tokens.Space.xs)
-                                }
+            LazyVGrid(columns: columns, spacing: Tokens.Space.sm) {
+                ForEach(StampCatalog.all) { option in
+                    Button {
+                        onSelect(option)
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            PostcardStampImage(option: option)
+                                .padding(Tokens.Space.xs)
+                                .frame(maxWidth: .infinity)
+                                .aspectRatio(1, contentMode: .fit)
+
+                            if selectedStampID == option.id {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .symbolRenderingMode(.palette)
+                                    .foregroundStyle(.white, .blue)
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .padding(Tokens.Space.xxs)
                             }
-                            .background(
-                                RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
-                                    .fill(Tokens.Color.paperCream.opacity(0.72))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
-                                    .stroke(
-                                        selectedStampID == option.id ? Color.blue : Tokens.Color.chromeDivider,
-                                        lineWidth: selectedStampID == option.id ? 3 : 1
-                                    )
-                            )
-                            .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.subtle))
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(option.accessibilityLabel)
-                        .accessibilityValue(selectedStampID == option.id ? "Selected" : "")
-                        .accessibilityAddTraits(selectedStampID == option.id ? .isSelected : [])
+                        .background(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
+                                .fill(Tokens.Color.paperCream.opacity(0.72))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
+                                .stroke(
+                                    selectedStampID == option.id ? Color.blue : Tokens.Color.chromeDivider,
+                                    lineWidth: selectedStampID == option.id ? 3 : 1
+                                )
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.subtle))
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.accessibilityLabel)
+                    .accessibilityValue(selectedStampID == option.id ? "Selected" : "")
+                    .accessibilityAddTraits(selectedStampID == option.id ? .isSelected : [])
                 }
-                .padding(Tokens.Space.md)
             }
-            .navigationTitle("Choose a Stamp")
-            .navigationBarTitleDisplayMode(.inline)
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .padding(Tokens.Space.md)
+        .frame(width: 264)
+        .presentationCompactAdaptation(.popover)
     }
 }
