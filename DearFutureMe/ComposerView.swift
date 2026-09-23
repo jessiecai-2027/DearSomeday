@@ -33,6 +33,7 @@ struct ComposerView: View {
     var onSealed: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @State private var step: Step = .photos
     @State private var photos: [CreationPhoto] = []
@@ -56,6 +57,11 @@ struct ComposerView: View {
     @State private var fontSelectionMessage: String?
     @State private var backTextColorHex = PostcardBackTextColor.defaultColor.hex
     @State private var customBackTextColor = Color(hex: PostcardBackTextColor.defaultColor.hex)
+    @State private var selectedStampID: String?
+    @State private var isStampPickerPresented = false
+    @State private var stampMotion: StampMotion = .settled
+    @State private var stampOpacity: Double = 1
+    @State private var stampAnimationTask: Task<Void, Never>?
     @State private var locationLabel = ""
     @StateObject private var currentLocation = CurrentLocationResolver()
     @State private var chosenDate = ComposerView.defaultUnlockDate()
@@ -67,6 +73,12 @@ struct ComposerView: View {
     @FocusState private var focusedField: Field?
 
     private enum Field { case title, backText, location }
+
+    private enum StampMotion {
+        case settled
+        case lifted
+        case pressed
+    }
 
     private enum Step: Int, CaseIterable {
         case photos
@@ -117,8 +129,14 @@ struct ComposerView: View {
             Task { await importPicked(items) }
         }
         .onDisappear {
+            stampAnimationTask?.cancel()
             if !committed {
                 services.creationService.discard(photos)
+            }
+        }
+        .sheet(isPresented: $isStampPickerPresented) {
+            StampPickerSheet(selectedStampID: selectedStampID) { option in
+                selectStamp(option)
             }
         }
     }
@@ -445,6 +463,20 @@ struct ComposerView: View {
                         .padding(.top, 24)
                         .allowsHitTesting(false)
                 }
+
+                if let selectedStamp {
+                    GeometryReader { proxy in
+                        let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                        PostcardStampImage(option: selectedStamp)
+                            .frame(width: frame.width, height: frame.height)
+                            .scaleEffect(stampScale)
+                            .offset(y: stampVerticalOffset(for: frame))
+                            .opacity(stampOpacity)
+                            .position(x: frame.midX, y: frame.midY)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
             }
             .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
             .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
@@ -466,6 +498,8 @@ struct ComposerView: View {
             .onPreferenceChange(PostcardCanvasSizePreferenceKey.self) {
                 backCanvasSize = $0
             }
+
+            stampPickerButton
 
             if messageHasNoMoreRoom {
                 Text("No more room")
@@ -542,6 +576,112 @@ struct ComposerView: View {
         }
     }
 
+    private var stampPickerButton: some View {
+        Button {
+            focusedField = nil
+            isStampPickerPresented = true
+        } label: {
+            HStack(spacing: Tokens.Space.sm) {
+                if let selectedStamp {
+                    PostcardStampImage(option: selectedStamp)
+                        .frame(width: 44, height: 44)
+                } else {
+                    Image(systemName: "mail.and.text.magnifyingglass")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(Tokens.Color.inkEspresso)
+                        .frame(width: 44, height: 44)
+                }
+
+                VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
+                    Text(selectedStamp == nil ? "Choose stamp" : "Change stamp")
+                        .font(Tokens.Font.button)
+                    if selectedStamp == nil {
+                        Text("Required")
+                            .font(Tokens.Font.caption)
+                            .foregroundStyle(Tokens.Color.chromeTextMuted)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(Tokens.Font.caption.weight(.semibold))
+                    .foregroundStyle(Tokens.Color.chromeTextMuted)
+            }
+            .foregroundStyle(Tokens.Color.chromeText)
+            .padding(.horizontal, Tokens.Space.sm)
+            .padding(.vertical, Tokens.Space.xs)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
+                    .fill(Tokens.Color.chromeSurface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
+                    .stroke(Tokens.Color.chromeDivider, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            selectedStamp.map { "Change stamp, \($0.accessibilityLabel)" } ?? "Choose stamp, required"
+        )
+    }
+
+    private var selectedStamp: StampOption? {
+        StampCatalog.option(withID: selectedStampID)
+    }
+
+    private var stampScale: CGFloat {
+        switch stampMotion {
+        case .settled: return 1
+        case .lifted: return 1.08
+        case .pressed: return 0.94
+        }
+    }
+
+    private func stampVerticalOffset(for frame: CGRect) -> CGFloat {
+        switch stampMotion {
+        case .settled: return 0
+        case .lifted: return -frame.height * 0.34
+        case .pressed: return frame.height * 0.025
+        }
+    }
+
+    private func selectStamp(_ option: StampOption) {
+        stampAnimationTask?.cancel()
+        selectedStampID = option.id
+        isStampPickerPresented = false
+        stampMotion = .settled
+
+        if accessibilityReduceMotion {
+            stampOpacity = 0
+            withAnimation(.easeInOut(duration: 0.2)) {
+                stampOpacity = 1
+            }
+            return
+        }
+
+        stampOpacity = 1
+        stampAnimationTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 60_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.16)) {
+                stampMotion = .lifted
+            }
+
+            try? await Task.sleep(nanoseconds: 160_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.12)) {
+                stampMotion = .pressed
+            }
+
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.66)) {
+                stampMotion = .settled
+            }
+        }
+    }
+
     // MARK: - Step 4: logistics
 
     private var logistics: some View {
@@ -609,6 +749,20 @@ struct ComposerView: View {
                         }
                         .allowsHitTesting(false)
                     }
+
+                    if let selectedStamp {
+                        HStack(spacing: Tokens.Space.sm) {
+                            PostcardStampImage(option: selectedStamp)
+                                .frame(width: 42, height: 42)
+
+                            Text("Stamp")
+                                .font(Tokens.Font.caption)
+
+                            Spacer()
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Selected \(selectedStamp.accessibilityLabel)")
+                    }
                 }
                 .foregroundStyle(Tokens.Color.chromeText)
             }
@@ -624,7 +778,7 @@ struct ComposerView: View {
         case .template:
             return selectedTemplate != nil && assignments.count == selectedTemplate?.slotCount
         case .back:
-            return true
+            return selectedStamp != nil
         case .logistics:
             return true
         }
@@ -764,6 +918,7 @@ struct ComposerView: View {
             backFontId: backFontId,
             backFontPointSize: Double(selectedBackFontPointSize),
             backTextColorHex: backTextColorHex,
+            stampAssetID: selectedStampID,
             locationLabel: locationLabel,
             unlockDate: unlockDate
         )

@@ -12,12 +12,7 @@ enum PostcardMessageLayout {
         container.lineFragmentPadding = 0
         container.lineBreakMode = .byCharWrapping
 
-        let stampBox = CGRect(
-            x: canvasSize.width * 0.706,
-            y: canvasSize.height * 0.064,
-            width: canvasSize.width * 0.183,
-            height: canvasSize.height * 0.119
-        )
+        let stampBox = PostcardBackLayout.stampFrame(in: canvasSize)
         let stampPadding = canvasSize.width * 0.03
         let paddedStampBox = stampBox.insetBy(dx: -stampPadding, dy: -stampPadding)
         let containerStampBox = CGRect(

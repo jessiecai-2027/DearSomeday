@@ -71,6 +71,7 @@ struct PostcardCreationServiceTests {
             backFontId: "serif",
             backFontPointSize: 14.25,
             backTextColorHex: "#111111",
+            stampAssetID: "robin",
             locationLabel: "Seattle",
             unlockDate: now.addingTimeInterval(86_400)
         ))
@@ -86,6 +87,12 @@ struct PostcardCreationServiceTests {
         #expect(stored.backTextColorHex == "#111111")
         #expect(stored.locationLabel == "Seattle")
         #expect(stored.animationMetadata.isEmpty)
+        #expect(stored.decorationElements.count == 1)
+        let stamp = try #require(stored.decorationElements.first)
+        #expect(stamp.kind == .stamp)
+        #expect(stamp.assetId == "robin")
+        #expect(abs(stamp.x - Double(PostcardBackLayout.normalizedStampFrame.midX)) < 0.000_001)
+        #expect(abs(stamp.y - Double(PostcardBackLayout.normalizedStampFrame.midY)) < 0.000_001)
         #expect(photoStore.loadData(fileName: photo.fileName) != nil)
     }
 
@@ -105,6 +112,7 @@ struct PostcardCreationServiceTests {
                 backText: "",
                 backFontId: nil,
                 backTextColorHex: "#2B241E",
+                stampAssetID: "golden-flower",
                 locationLabel: nil,
                 unlockDate: now.addingTimeInterval(86_400)
             ))
@@ -131,12 +139,49 @@ struct PostcardCreationServiceTests {
                 backText: "",
                 backFontId: nil,
                 backTextColorHex: "#2B241E",
+                stampAssetID: "golden-flower",
                 locationLabel: nil,
                 unlockDate: now.addingTimeInterval(86_400)
             ))
         }
 
         #expect(photoStore.loadData(fileName: photo.fileName) == nil)
+    }
+
+    @Test func createRejectsMissingAndUnknownStamps() async throws {
+        let store = InMemoryPostcardStore()
+        let photoStore = try tempPhotoStore()
+        let clock = makeClock()
+        let service = service(store: store, photoStore: photoStore, clock: clock)
+        let photo = try service.importPhoto(solidImage())
+        let template = CardTemplate(id: "one", name: "One", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 1),
+        ])
+        let assignments = template.autoFillMatched(photoIDs: [photo.id], aspects: [photo.id: photo.aspect])
+
+        func input(stampAssetID: String?) -> PostcardCreationInput {
+            PostcardCreationInput(
+                title: "",
+                photos: [photo],
+                template: template,
+                assignments: assignments,
+                backText: "",
+                backFontId: nil,
+                backTextColorHex: "#2B241E",
+                stampAssetID: stampAssetID,
+                locationLabel: nil,
+                unlockDate: now.addingTimeInterval(86_400)
+            )
+        }
+
+        await #expect(throws: PostcardCreationError.missingStamp) {
+            _ = try await service.create(input(stampAssetID: nil))
+        }
+        await #expect(throws: PostcardCreationError.unknownStamp) {
+            _ = try await service.create(input(stampAssetID: "retired-stamp"))
+        }
+
+        service.discard([photo])
     }
 }
 

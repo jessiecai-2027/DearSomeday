@@ -5,6 +5,7 @@
 
 import Testing
 import Foundation
+import UIKit
 @testable import DearFutureMe
 
 @MainActor
@@ -121,5 +122,57 @@ struct PostcardRenderResolverTests {
         #expect(PostcardRenderResolver.backFontPointSize(for: saved) == 14.5)
         #expect(PostcardRenderResolver.backFontPointSize(for: legacy) == nil)
         #expect(PostcardRenderResolver.backFontPointSize(for: invalid) == nil)
+    }
+
+    @Test func resolvesKnownStampAndIgnoresLegacyOrUnknownStampData() {
+        let known = Postcard(
+            decorationElements: [CanvasElement(kind: .stamp, assetId: "robin")]
+        )
+        let legacy = Postcard()
+        let unknown = Postcard(
+            decorationElements: [CanvasElement(kind: .stamp, assetId: "retired-stamp")]
+        )
+
+        #expect(PostcardRenderResolver.stamp(for: known)?.id == "robin")
+        #expect(PostcardRenderResolver.stamp(for: legacy) == nil)
+        #expect(PostcardRenderResolver.stamp(for: unknown) == nil)
+    }
+
+    @Test func stampCatalogHasSevenUniqueStableIDsAndLoadableImages() throws {
+        #expect(StampCatalog.all.count == 7)
+        #expect(Set(StampCatalog.all.map(\.id)).count == StampCatalog.all.count)
+
+        for option in StampCatalog.all {
+            let image = try #require(UIImage(named: option.imageName))
+            #expect(image.size.width > 0)
+            #expect(image.size.height > 0)
+            let alpha = try #require(image.cgImage).alphaInfo
+            #expect(alpha != .none)
+            #expect(alpha != .noneSkipFirst)
+            #expect(alpha != .noneSkipLast)
+        }
+    }
+
+    @Test func everyStampAspectFitsInsideThePrintedBoxWithoutCropping() throws {
+        let box = PostcardBackLayout.stampFrame(in: CGSize(width: 320, height: 480))
+
+        for option in StampCatalog.all {
+            let image = try #require(UIImage(named: option.imageName))
+            let scale = min(box.width / image.size.width, box.height / image.size.height)
+            let fitted = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+
+            #expect(fitted.width <= box.width + 0.001)
+            #expect(fitted.height <= box.height + 0.001)
+        }
+    }
+
+    @Test func stampFrameUsesTheSharedNormalizedGeometry() {
+        let size = CGSize(width: 320, height: 480)
+        let frame = PostcardBackLayout.stampFrame(in: size)
+
+        #expect(frame.origin.x == size.width * 0.706)
+        #expect(frame.origin.y == size.height * 0.064)
+        #expect(frame.width == size.width * 0.183)
+        #expect(frame.height == size.height * 0.119)
     }
 }

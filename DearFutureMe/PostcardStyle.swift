@@ -15,6 +15,26 @@ enum PostcardCanvasMetrics {
     static let maxWidth: CGFloat = 340
 }
 
+enum PostcardBackLayout {
+    /// The printed dotted square in `PostcardBack`, normalised to the full
+    /// postcard canvas. Text exclusion and stamp rendering share this geometry.
+    static let normalizedStampFrame = CGRect(
+        x: 0.706,
+        y: 0.064,
+        width: 0.183,
+        height: 0.119
+    )
+
+    static func stampFrame(in canvasSize: CGSize) -> CGRect {
+        CGRect(
+            x: normalizedStampFrame.minX * canvasSize.width,
+            y: normalizedStampFrame.minY * canvasSize.height,
+            width: normalizedStampFrame.width * canvasSize.width,
+            height: normalizedStampFrame.height * canvasSize.height
+        )
+    }
+}
+
 enum PostcardBackFont: String, CaseIterable, Identifiable {
     case caveat
     case dancingScript

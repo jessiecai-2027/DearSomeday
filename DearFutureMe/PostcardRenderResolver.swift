@@ -70,6 +70,18 @@ enum PostcardRenderResolver {
         PostcardBackTextColor.resolvedHex(card.backTextColorHex)
     }
 
+    static func stamp(
+        for card: Postcard,
+        catalog: [StampOption] = StampCatalog.all
+    ) -> StampOption? {
+        let optionsByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.id, $0) })
+        return card.decorationElements
+            .filter { $0.kind == .stamp }
+            .sorted { $0.zIndex < $1.zIndex }
+            .compactMap { optionsByID[$0.assetId] }
+            .last
+    }
+
     private static func aspectsByID(for photos: [StoredPhoto]) -> [UUID: CGFloat] {
         Dictionary(uniqueKeysWithValues: photos.map { photo in
             (photo.id, CGFloat(photo.aspect))

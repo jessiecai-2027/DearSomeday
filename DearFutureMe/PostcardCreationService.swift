@@ -29,6 +29,7 @@ struct PostcardCreationInput {
     var backFontId: String?
     var backFontPointSize: Double? = nil
     var backTextColorHex: String
+    var stampAssetID: String? = nil
     var locationLabel: String?
     var unlockDate: Date
 }
@@ -36,6 +37,8 @@ struct PostcardCreationInput {
 enum PostcardCreationError: Error, Equatable {
     case noPhotos
     case missingAssignments
+    case missingStamp
+    case unknownStamp
     case trustedTimeUnavailable
 }
 
@@ -85,6 +88,12 @@ final class PostcardCreationService {
         guard input.assignments.count == input.template.slotCount else {
             throw PostcardCreationError.missingAssignments
         }
+        guard let stampAssetID = input.stampAssetID else {
+            throw PostcardCreationError.missingStamp
+        }
+        guard StampCatalog.option(withID: stampAssetID) != nil else {
+            throw PostcardCreationError.unknownStamp
+        }
 
         if case .neverSynced = clock.now() {
             await clock.syncFromServer()
@@ -103,6 +112,16 @@ final class PostcardCreationService {
         }
         let backText = input.backText.trimmingCharacters(in: .whitespacesAndNewlines)
         let location = input.locationLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stampFrame = PostcardBackLayout.normalizedStampFrame
+        let stampElement = CanvasElement(
+            kind: .stamp,
+            assetId: stampAssetID,
+            x: stampFrame.midX,
+            y: stampFrame.midY,
+            rotation: 0,
+            scale: 1,
+            zIndex: 0
+        )
         let draft = Postcard(
             title: input.title.trimmingCharacters(in: .whitespacesAndNewlines),
             message: backText,
@@ -116,7 +135,8 @@ final class PostcardCreationService {
             locationLabel: location?.isEmpty == true ? nil : location,
             animationMetadata: [],
             createdAt: now,
-            state: .draft
+            state: .draft,
+            decorationElements: [stampElement]
         )
 
         do {
