@@ -22,6 +22,9 @@ enum PostcardBackFont: String, CaseIterable, Identifiable {
     case josefinSans
 
     static let defaultFont: PostcardBackFont = .caveat
+    static let normalPointSize: CGFloat = 17
+    static let minimumLockedPointSize: CGFloat = 12
+    static let minimumLegacyPointSize: CGFloat = 8
 
     var id: String { rawValue }
 
@@ -44,12 +47,20 @@ enum PostcardBackFont: String, CaseIterable, Identifiable {
     }
 
     var bodyFont: Font {
-        .custom(fontName, size: 17, relativeTo: .body)
+        font(pointSize: Self.normalPointSize)
     }
 
     var uiBodyFont: UIFont {
-        let baseFont = UIFont(name: fontName, size: 17) ?? .systemFont(ofSize: 17)
+        let baseFont = uiFont(pointSize: Self.normalPointSize)
         return UIFontMetrics(forTextStyle: .body).scaledFont(for: baseFont)
+    }
+
+    func font(pointSize: CGFloat) -> Font {
+        .custom(fontName, size: pointSize)
+    }
+
+    func uiFont(pointSize: CGFloat) -> UIFont {
+        UIFont(name: fontName, size: pointSize) ?? .systemFont(ofSize: pointSize)
     }
 
     var previewFont: Font {

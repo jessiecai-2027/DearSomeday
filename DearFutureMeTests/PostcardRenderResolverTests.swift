@@ -112,4 +112,14 @@ struct PostcardRenderResolverTests {
         #expect(PostcardRenderResolver.backTextColorHex(for: card) == PostcardBackTextColor.defaultColor.hex)
         #expect(PostcardBackTextColor.resolvedHex("a46150") == "#A46150")
     }
+
+    @Test func resolvesPersistedFontSizeAndTreatsMissingOrInvalidSizesAsLegacy() {
+        let saved = Postcard(backFontPointSize: 14.5, state: .unlocked)
+        let legacy = Postcard(backFontPointSize: nil, state: .unlocked)
+        let invalid = Postcard(backFontPointSize: 4, state: .unlocked)
+
+        #expect(PostcardRenderResolver.backFontPointSize(for: saved) == 14.5)
+        #expect(PostcardRenderResolver.backFontPointSize(for: legacy) == nil)
+        #expect(PostcardRenderResolver.backFontPointSize(for: invalid) == nil)
+    }
 }

@@ -56,6 +56,16 @@ enum PostcardRenderResolver {
         PostcardBackFont.resolved(id: card.backFontId)
     }
 
+    static func backFontPointSize(for card: Postcard) -> CGFloat? {
+        guard let storedSize = card.backFontPointSize else { return nil }
+        let size = CGFloat(storedSize)
+        guard size.isFinite,
+              size >= PostcardBackFont.minimumLockedPointSize,
+              size <= PostcardBackFont.normalPointSize
+        else { return nil }
+        return size
+    }
+
     static func backTextColorHex(for card: Postcard) -> String {
         PostcardBackTextColor.resolvedHex(card.backTextColorHex)
     }

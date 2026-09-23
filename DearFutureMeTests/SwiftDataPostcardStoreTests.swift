@@ -109,6 +109,7 @@ struct SwiftDataPostcardStoreTests {
             slotAssignments: [assignment],
             backText: "back",
             backFontId: "serif",
+            backFontPointSize: 13.75,
             backTextColorHex: "#111111",
             locationLabel: "Lisbon",
             animationMetadata: [AnimationCue(targetID: "slot-a", kind: "future", duration: 1)],
@@ -124,6 +125,7 @@ struct SwiftDataPostcardStoreTests {
         #expect(fetched?.slotAssignments == [assignment])
         #expect(fetched?.backText == "back")
         #expect(fetched?.backFontId == "serif")
+        #expect(fetched?.backFontPointSize == 13.75)
         #expect(fetched?.backTextColorHex == "#111111")
         #expect(fetched?.locationLabel == "Lisbon")
         #expect(fetched?.animationMetadata.count == 1)

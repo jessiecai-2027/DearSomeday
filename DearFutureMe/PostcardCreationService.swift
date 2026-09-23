@@ -27,6 +27,7 @@ struct PostcardCreationInput {
     var assignments: [SlotAssignment]
     var backText: String
     var backFontId: String?
+    var backFontPointSize: Double? = nil
     var backTextColorHex: String
     var locationLabel: String?
     var unlockDate: Date
@@ -110,6 +111,7 @@ final class PostcardCreationService {
             slotAssignments: input.assignments,
             backText: backText,
             backFontId: input.backFontId,
+            backFontPointSize: input.backFontPointSize,
             backTextColorHex: input.backTextColorHex,
             locationLabel: location?.isEmpty == true ? nil : location,
             animationMetadata: [],

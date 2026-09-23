@@ -169,6 +169,7 @@ final class SwiftDataPostcardStore: PostcardStore {
         destination.slotAssignments = source.slotAssignments
         destination.backText = source.backText
         destination.backFontId = source.backFontId
+        destination.backFontPointSize = source.backFontPointSize
         destination.backTextColorHex = source.backTextColorHex
         destination.locationLabel = source.locationLabel
         destination.animationMetadata = source.animationMetadata

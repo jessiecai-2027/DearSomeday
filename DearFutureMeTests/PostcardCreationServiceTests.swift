@@ -69,6 +69,7 @@ struct PostcardCreationServiceTests {
             assignments: assignments,
             backText: "remember this",
             backFontId: "serif",
+            backFontPointSize: 14.25,
             backTextColorHex: "#111111",
             locationLabel: "Seattle",
             unlockDate: now.addingTimeInterval(86_400)
@@ -81,6 +82,7 @@ struct PostcardCreationServiceTests {
         #expect(stored.slotAssignments == assignments)
         #expect(stored.backText == "remember this")
         #expect(stored.backFontId == "serif")
+        #expect(stored.backFontPointSize == 14.25)
         #expect(stored.backTextColorHex == "#111111")
         #expect(stored.locationLabel == "Seattle")
         #expect(stored.animationMetadata.isEmpty)

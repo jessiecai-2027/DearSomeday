@@ -178,6 +178,10 @@ struct PostcardBackView: View {
         PostcardRenderResolver.backFont(for: card)
     }
 
+    private var storedFontPointSize: CGFloat? {
+        PostcardRenderResolver.backFontPointSize(for: card)
+    }
+
     private var textColor: Color {
         Color(hex: PostcardRenderResolver.backTextColorHex(for: card))
     }
@@ -192,9 +196,12 @@ struct PostcardBackView: View {
                 if !text.isEmpty {
                     PostcardMessageTextView(
                         text: .constant(text),
-                        font: font.uiBodyFont,
+                        font: storedFontPointSize.map(font.uiFont(pointSize:)) ?? font.uiBodyFont,
                         textColor: UIColor(textColor),
-                        isEditable: false
+                        isEditable: false,
+                        adaptiveMinimumPointSize: storedFontPointSize == nil
+                            ? PostcardBackFont.minimumLegacyPointSize
+                            : nil
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()

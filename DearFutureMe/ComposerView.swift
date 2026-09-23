@@ -13,6 +13,17 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
+private struct PostcardCanvasSizePreferenceKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        if next.width > 0, next.height > 0 {
+            value = next
+        }
+    }
+}
+
 struct ComposerView: View {
 
     let services: AppServices
@@ -37,6 +48,12 @@ struct ComposerView: View {
     @State private var title = ""
     @State private var backText = ""
     @State private var backFontId = PostcardBackFont.defaultFont.id
+    @State private var lockedBackFontSizes: [String: CGFloat] = [
+        PostcardBackFont.defaultFont.id: PostcardBackFont.normalPointSize
+    ]
+    @State private var backCanvasSize: CGSize = .zero
+    @State private var messageHasNoMoreRoom = false
+    @State private var fontSelectionMessage: String?
     @State private var backTextColorHex = PostcardBackTextColor.defaultColor.hex
     @State private var customBackTextColor = Color(hex: PostcardBackTextColor.defaultColor.hex)
     @State private var locationLabel = ""
@@ -400,22 +417,29 @@ struct ComposerView: View {
 
                 PostcardMessageTextView(
                     text: $backText,
-                    font: selectedBackFont.uiBodyFont,
+                    font: selectedBackFont.uiFont(pointSize: selectedBackFontPointSize),
                     textColor: UIColor(Color(hex: backTextColorHex)),
-                    isEditable: true
+                    isEditable: true,
+                    validationFonts: lockedBackFonts,
+                    adaptiveMinimumPointSize: nil,
+                    onCapacityChange: { messageHasNoMoreRoom = $0 }
                 )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     .focused($focusedField, equals: .backText)
-                    .onChange(of: backText) { _, new in
+                    .onChange(of: backText) { old, new in
                         if new.count > ComposerLogic.maxMessageLength {
                             backText = String(new.prefix(ComposerLogic.maxMessageLength))
+                        }
+                        if new.count < old.count {
+                            messageHasNoMoreRoom = false
+                            fontSelectionMessage = nil
                         }
                     }
 
                 if backText.isEmpty {
                     Text("Your message")
-                        .font(selectedBackFont.bodyFont)
+                        .font(selectedBackFont.font(pointSize: selectedBackFontPointSize))
                         .foregroundStyle(Color(hex: backTextColorHex).opacity(0.35))
                         .padding(.horizontal, 24)
                         .padding(.top, 24)
@@ -424,6 +448,14 @@ struct ComposerView: View {
             }
             .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
             .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: PostcardCanvasSizePreferenceKey.self,
+                        value: proxy.size
+                    )
+                }
+            }
             .clipped()
             .shadow(
                 color: Tokens.Shadow.raised.color,
@@ -431,6 +463,17 @@ struct ComposerView: View {
                 y: Tokens.Shadow.raised.y
             )
             .frame(maxWidth: .infinity)
+            .onPreferenceChange(PostcardCanvasSizePreferenceKey.self) {
+                backCanvasSize = $0
+            }
+
+            if messageHasNoMoreRoom {
+                Text("No more room")
+                    .font(Tokens.Font.caption)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .trailing)
+                    .frame(maxWidth: .infinity)
+            }
 
             fontOptions
 
@@ -463,7 +506,7 @@ struct ComposerView: View {
 
             ForEach(PostcardBackFont.allCases) { font in
                 Button {
-                    backFontId = font.id
+                    selectBackFont(font)
                 } label: {
                     HStack {
                         Text(font.name)
@@ -489,6 +532,12 @@ struct ComposerView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(font.name)
+            }
+
+            if let fontSelectionMessage {
+                Text(fontSelectionMessage)
+                    .font(Tokens.Font.caption)
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -539,7 +588,7 @@ struct ComposerView: View {
                     PostcardSummaryTextView(
                         title: title,
                         message: backText,
-                        messageFont: selectedBackFont.uiBodyFont,
+                        messageFont: selectedBackFont.uiFont(pointSize: selectedBackFontPointSize),
                         messageColor: UIColor(Color(hex: backTextColorHex))
                     )
                     .overlay(alignment: .topLeading) {
@@ -713,6 +762,7 @@ struct ComposerView: View {
             assignments: assignments,
             backText: backText,
             backFontId: backFontId,
+            backFontPointSize: Double(selectedBackFontPointSize),
             backTextColorHex: backTextColorHex,
             locationLabel: locationLabel,
             unlockDate: unlockDate
@@ -743,6 +793,40 @@ struct ComposerView: View {
 
     private var selectedBackFont: PostcardBackFont {
         PostcardBackFont.resolved(id: backFontId)
+    }
+
+    private var selectedBackFontPointSize: CGFloat {
+        lockedBackFontSizes[backFontId] ?? PostcardBackFont.normalPointSize
+    }
+
+    private var lockedBackFonts: [UIFont] {
+        lockedBackFontSizes.compactMap { id, size in
+            PostcardBackFont(rawValue: id)?.uiFont(pointSize: size)
+        }
+    }
+
+    private func selectBackFont(_ font: PostcardBackFont) {
+        if lockedBackFontSizes[font.id] != nil {
+            backFontId = font.id
+            fontSelectionMessage = nil
+            messageHasNoMoreRoom = false
+            return
+        }
+
+        guard backCanvasSize.width > 0, backCanvasSize.height > 0 else { return }
+        guard let pointSize = PostcardMessageLayout.largestFittingPointSize(
+            for: backText,
+            font: font,
+            canvasSize: backCanvasSize
+        ) else {
+            fontSelectionMessage = "This message is too long for this font."
+            return
+        }
+
+        lockedBackFontSizes[font.id] = pointSize
+        backFontId = font.id
+        fontSelectionMessage = nil
+        messageHasNoMoreRoom = false
     }
 
     private var customBackTextColorBinding: Binding<Color> {

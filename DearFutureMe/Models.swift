@@ -73,7 +73,7 @@ final class Postcard {
 
     /// Current on-disk schema for the local store. Independent of the bundle's
     /// `Manifest.latestSchemaVersion` — the two layers version separately.
-    static let latestSchemaVersion = 2
+    static let latestSchemaVersion = 3
 
     /// The card's domain identity (§6.1). This is NOT `.unique` — rule 2 —
     /// so uniqueness is an application invariant, not a store guarantee. Also
@@ -109,6 +109,7 @@ final class Postcard {
 
     /// Back-side text styling. Token ids or hex strings, never platform ids.
     var backFontId: String? = nil
+    var backFontPointSize: Double? = nil
     var backTextColorHex: String = "#2B241E"
 
     /// Optional place label, entered manually or resolved from current location.
@@ -155,6 +156,7 @@ final class Postcard {
         slotAssignments: [SlotAssignment] = [],
         backText: String = "",
         backFontId: String? = nil,
+        backFontPointSize: Double? = nil,
         backTextColorHex: String = "#2B241E",
         locationLabel: String? = nil,
         animationMetadata: [AnimationCue] = [],
@@ -174,6 +176,7 @@ final class Postcard {
         self.slotAssignments = slotAssignments
         self.backText = backText
         self.backFontId = backFontId
+        self.backFontPointSize = backFontPointSize
         self.backTextColorHex = backTextColorHex
         self.locationLabel = locationLabel
         self.animationMetadata = animationMetadata
