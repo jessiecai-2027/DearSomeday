@@ -193,9 +193,9 @@ struct PostcardBackView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                Image("PostcardBack")
+                Image(stamp == nil ? "PostcardBack" : "PostcardBackBlank")
                     .resizable()
-                    .scaledToFit()
+                    .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
 
                 if !text.isEmpty {
                     PostcardMessageTextView(
@@ -213,8 +213,10 @@ struct PostcardBackView: View {
 
                 if let stamp {
                     let frame = PostcardBackLayout.stampFrame(in: proxy.size)
-                    PostcardStampImage(option: stamp)
-                        .frame(width: frame.width, height: frame.height)
+                    PostcardPlacedStampImage(
+                        option: stamp,
+                        size: frame.size
+                    )
                         .position(x: frame.midX, y: frame.midY)
                         .accessibilityLabel(stamp.accessibilityLabel)
                 }

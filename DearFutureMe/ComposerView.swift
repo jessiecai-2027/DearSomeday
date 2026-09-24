@@ -67,6 +67,7 @@ struct ComposerView: View {
     @State private var customBackTextColor = Color(hex: PostcardBackTextColor.defaultColor.hex)
     @State private var selectedStampID: String?
     @State private var isStampPickerPresented = false
+    @State private var hasPlacedStamp = false
     @State private var stampMotion: StampMotion = .settled
     @State private var stampOpacity: Double = 1
     @State private var stampAnimationTask: Task<Void, Never>?
@@ -432,9 +433,9 @@ struct ComposerView: View {
                 }
 
             ZStack(alignment: .topLeading) {
-                Image("PostcardBack")
+                Image(hasPlacedStamp ? "PostcardBackBlank" : "PostcardBack")
                     .resizable()
-                    .scaledToFit()
+                    .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
                     .overlay {
                         RoundedRectangle(cornerRadius: 2)
                             .stroke(.gray.opacity(0.4), lineWidth: 1)
@@ -491,9 +492,11 @@ struct ComposerView: View {
                 if let selectedStamp {
                     GeometryReader { proxy in
                         let frame = PostcardBackLayout.stampFrame(in: proxy.size)
-                        PostcardStampImage(option: selectedStamp)
-                            .frame(width: frame.width, height: frame.height)
-                            .scaleEffect(stampScale)
+                        PostcardPlacedStampImage(
+                            option: selectedStamp,
+                            size: frame.size
+                        )
+                            .scaleEffect(stampScale, anchor: .bottomLeading)
                             .offset(y: stampVerticalOffset(for: frame))
                             .opacity(stampOpacity)
                             .position(x: frame.midX, y: frame.midY)
@@ -709,6 +712,7 @@ struct ComposerView: View {
         stampMotion = .settled
 
         if accessibilityReduceMotion {
+            hasPlacedStamp = true
             stampOpacity = 0
             withAnimation(.easeInOut(duration: 0.2)) {
                 stampOpacity = 1
@@ -726,6 +730,7 @@ struct ComposerView: View {
 
             try? await Task.sleep(nanoseconds: 160_000_000)
             guard !Task.isCancelled else { return }
+            hasPlacedStamp = true
             withAnimation(.easeIn(duration: 0.12)) {
                 stampMotion = .pressed
             }

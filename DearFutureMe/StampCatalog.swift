@@ -11,17 +11,44 @@ struct StampOption: Identifiable, Equatable, Hashable {
     let id: String
     let imageName: String
     let accessibilityLabel: String
+    let sourceSize: CGSize
+
+    func placementCovering(_ frame: CGRect) -> (size: CGSize, center: CGPoint) {
+        let sourceAspectRatio = sourceSize.width / sourceSize.height
+        let frameAspectRatio = frame.width / frame.height
+        let size: CGSize
+
+        if sourceAspectRatio >= frameAspectRatio {
+            size = CGSize(
+                width: frame.height * sourceAspectRatio,
+                height: frame.height
+            )
+        } else {
+            size = CGSize(
+                width: frame.width,
+                height: frame.width / sourceAspectRatio
+            )
+        }
+
+        return (
+            size,
+            CGPoint(
+                x: frame.minX + size.width / 2,
+                y: frame.maxY - size.height / 2
+            )
+        )
+    }
 }
 
 enum StampCatalog {
     static let all: [StampOption] = [
-        StampOption(id: "golden-flower", imageName: "StampGoldenFlower", accessibilityLabel: "Golden flower stamp"),
-        StampOption(id: "purple-wildflower", imageName: "StampPurpleWildflower", accessibilityLabel: "Purple wildflower stamp"),
-        StampOption(id: "pink-daisies", imageName: "StampPinkDaisies", accessibilityLabel: "Pink daisies stamp"),
-        StampOption(id: "mushroom", imageName: "StampMushroom", accessibilityLabel: "Mushroom stamp"),
-        StampOption(id: "grapes", imageName: "StampGrapes", accessibilityLabel: "Grapes stamp"),
-        StampOption(id: "robin", imageName: "StampRobin", accessibilityLabel: "Robin stamp"),
-        StampOption(id: "sailboat", imageName: "StampSailboat", accessibilityLabel: "Sailboat stamp"),
+        StampOption(id: "golden-flower", imageName: "StampGoldenFlower", accessibilityLabel: "Golden flower stamp", sourceSize: CGSize(width: 866, height: 866)),
+        StampOption(id: "purple-wildflower", imageName: "StampPurpleWildflower", accessibilityLabel: "Purple wildflower stamp", sourceSize: CGSize(width: 941, height: 941)),
+        StampOption(id: "pink-daisies", imageName: "StampPinkDaisies", accessibilityLabel: "Pink daisies stamp", sourceSize: CGSize(width: 575, height: 575)),
+        StampOption(id: "mushroom", imageName: "StampMushroom", accessibilityLabel: "Mushroom stamp", sourceSize: CGSize(width: 641, height: 641)),
+        StampOption(id: "grapes", imageName: "StampGrapes", accessibilityLabel: "Grapes stamp", sourceSize: CGSize(width: 600, height: 600)),
+        StampOption(id: "robin", imageName: "StampRobin", accessibilityLabel: "Robin stamp", sourceSize: CGSize(width: 434, height: 471)),
+        StampOption(id: "sailboat", imageName: "StampSailboat", accessibilityLabel: "Sailboat stamp", sourceSize: CGSize(width: 309, height: 387)),
     ]
 
     static func option(withID id: String?) -> StampOption? {
@@ -38,6 +65,30 @@ struct PostcardStampImage: View {
             .resizable()
             .scaledToFit()
             .accessibilityHidden(true)
+    }
+}
+
+struct PostcardPlacedStampImage: View {
+    let option: StampOption
+    let size: CGSize
+
+    var body: some View {
+        let bounds = CGRect(origin: .zero, size: size)
+        let placement = option.placementCovering(bounds)
+
+        ZStack(alignment: .topLeading) {
+            PostcardStampImage(option: option)
+                .frame(
+                    width: placement.size.width,
+                    height: placement.size.height
+                )
+                .position(
+                    x: placement.center.x,
+                    y: placement.center.y
+                )
+        }
+        .frame(width: size.width, height: size.height)
+        .clipped()
     }
 }
 
