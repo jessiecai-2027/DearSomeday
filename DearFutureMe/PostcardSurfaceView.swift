@@ -186,12 +186,16 @@ struct PostcardBackView: View {
         Color(hex: PostcardRenderResolver.backTextColorHex(for: card))
     }
 
+    private var stamp: StampOption? {
+        PostcardRenderResolver.stamp(for: card)
+    }
+
     var body: some View {
-        GeometryReader { _ in
+        GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                Image("PostcardBack")
+                Image(stamp == nil ? "PostcardBack" : "PostcardBackBlank")
                     .resizable()
-                    .scaledToFit()
+                    .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
 
                 if !text.isEmpty {
                     PostcardMessageTextView(
@@ -205,6 +209,16 @@ struct PostcardBackView: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
+                }
+
+                if let stamp {
+                    let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                    PostcardPlacedStampImage(
+                        option: stamp,
+                        size: frame.size
+                    )
+                        .position(x: frame.midX, y: frame.midY)
+                        .accessibilityLabel(stamp.accessibilityLabel)
                 }
             }
             .overlay(Rectangle().stroke(Tokens.Color.paperTan.opacity(0.7), lineWidth: 1))

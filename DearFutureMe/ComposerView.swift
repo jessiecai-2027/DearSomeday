@@ -24,6 +24,14 @@ private struct PostcardCanvasSizePreferenceKey: PreferenceKey {
     }
 }
 
+private struct StampPickerAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect?
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
 struct ComposerView: View {
 
     let services: AppServices
@@ -33,6 +41,7 @@ struct ComposerView: View {
     var onSealed: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @State private var step: Step = .photos
     @State private var photos: [CreationPhoto] = []
@@ -56,6 +65,12 @@ struct ComposerView: View {
     @State private var fontSelectionMessage: String?
     @State private var backTextColorHex = PostcardBackTextColor.defaultColor.hex
     @State private var customBackTextColor = Color(hex: PostcardBackTextColor.defaultColor.hex)
+    @State private var selectedStampID: String?
+    @State private var isStampPickerPresented = false
+    @State private var hasPlacedStamp = false
+    @State private var stampMotion: StampMotion = .settled
+    @State private var stampOpacity: Double = 1
+    @State private var stampAnimationTask: Task<Void, Never>?
     @State private var locationLabel = ""
     @StateObject private var currentLocation = CurrentLocationResolver()
     @State private var chosenDate = ComposerView.defaultUnlockDate()
@@ -67,6 +82,12 @@ struct ComposerView: View {
     @FocusState private var focusedField: Field?
 
     private enum Field { case title, backText, location }
+
+    private enum StampMotion {
+        case settled
+        case lifted
+        case pressed
+    }
 
     private enum Step: Int, CaseIterable {
         case photos
@@ -112,11 +133,16 @@ struct ComposerView: View {
             imageName: "PostcardCreationBackground",
             tintOpacity: 0.68
         )
+        .coordinateSpace(name: "composerRoot")
+        .overlayPreferenceValue(StampPickerAnchorPreferenceKey.self) { anchor in
+            stampPickerOverlay(anchor: anchor)
+        }
         .interactiveDismissDisabled(isSealing)
         .onChange(of: pickerItems) { _, items in
             Task { await importPicked(items) }
         }
         .onDisappear {
+            stampAnimationTask?.cancel()
             if !committed {
                 services.creationService.discard(photos)
             }
@@ -407,9 +433,9 @@ struct ComposerView: View {
                 }
 
             ZStack(alignment: .topLeading) {
-                Image("PostcardBack")
+                Image(hasPlacedStamp ? "PostcardBackBlank" : "PostcardBack")
                     .resizable()
-                    .scaledToFit()
+                    .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
                     .overlay {
                         RoundedRectangle(cornerRadius: 2)
                             .stroke(.gray.opacity(0.4), lineWidth: 1)
@@ -444,6 +470,69 @@ struct ComposerView: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 24)
                         .allowsHitTesting(false)
+                }
+
+                if selectedStamp == nil {
+                    GeometryReader { proxy in
+                        let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                        Text("click to choose stamp...")
+                            .font(Tokens.Font.caption2)
+                            .foregroundStyle(Color.secondary.opacity(0.68))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.72)
+                            .padding(4)
+                            .frame(width: frame.width, height: frame.height)
+                            .position(x: frame.midX, y: frame.midY)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+
+                if let selectedStamp {
+                    GeometryReader { proxy in
+                        let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                        PostcardPlacedStampImage(
+                            option: selectedStamp,
+                            size: frame.size
+                        )
+                            .scaleEffect(stampScale, anchor: .bottomLeading)
+                            .offset(y: stampVerticalOffset(for: frame))
+                            .opacity(stampOpacity)
+                            .position(x: frame.midX, y: frame.midY)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+
+                GeometryReader { proxy in
+                    let frame = PostcardBackLayout.stampFrame(in: proxy.size)
+                    let canvasFrame = proxy.frame(in: .named("composerRoot"))
+                    let anchorFrame = frame.offsetBy(
+                        dx: canvasFrame.minX,
+                        dy: canvasFrame.minY
+                    )
+                    Button {
+                        focusedField = nil
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                            isStampPickerPresented = true
+                        }
+                    } label: {
+                        Color.clear
+                            .frame(width: frame.width, height: frame.height)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .position(x: frame.midX, y: frame.midY)
+                    .accessibilityLabel(
+                        selectedStamp.map { "Change stamp, \($0.accessibilityLabel)" }
+                            ?? "Choose stamp, required"
+                    )
+                    .accessibilityHint("Opens the stamp palette")
+                    .preference(
+                        key: StampPickerAnchorPreferenceKey.self,
+                        value: anchorFrame
+                    )
                 }
             }
             .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
@@ -542,6 +631,118 @@ struct ComposerView: View {
         }
     }
 
+    private var selectedStamp: StampOption? {
+        StampCatalog.option(withID: selectedStampID)
+    }
+
+    @ViewBuilder
+    private func stampPickerOverlay(anchor: CGRect?) -> some View {
+        GeometryReader { proxy in
+            if isStampPickerPresented, let sourceFrame = anchor {
+                let paletteWidth: CGFloat = 264
+                let screenMargin: CGFloat = 12
+                let arrowWidth: CGFloat = 20
+                let minimumX = screenMargin
+                let maximumX = max(minimumX, proxy.size.width - paletteWidth - screenMargin)
+                let paletteX = min(
+                    max(sourceFrame.midX - paletteWidth / 2, minimumX),
+                    maximumX
+                )
+                let arrowX = min(
+                    max(sourceFrame.midX - paletteX - arrowWidth / 2, 14),
+                    paletteWidth - arrowWidth - 14
+                )
+
+                ZStack(alignment: .topLeading) {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.16)) {
+                                isStampPickerPresented = false
+                            }
+                        }
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        StampPopoverArrow()
+                            .fill(.regularMaterial)
+                            .frame(width: arrowWidth, height: 11)
+                            .padding(.leading, arrowX)
+
+                        StampPickerPopover(selectedStampID: selectedStampID) { option in
+                            selectStamp(option)
+                        }
+                        .background(
+                            .regularMaterial,
+                            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        )
+                        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+                    }
+                    .frame(width: paletteWidth, alignment: .leading)
+                    .offset(x: paletteX, y: sourceFrame.maxY - 55)
+                    .transition(
+                        .scale(scale: 0.94, anchor: .topTrailing)
+                            .combined(with: .opacity)
+                    )
+                }
+            }
+        }
+    }
+
+    private var stampScale: CGFloat {
+        switch stampMotion {
+        case .settled: return 1
+        case .lifted: return 1.08
+        case .pressed: return 0.94
+        }
+    }
+
+    private func stampVerticalOffset(for frame: CGRect) -> CGFloat {
+        switch stampMotion {
+        case .settled: return 0
+        case .lifted: return -frame.height * 0.34
+        case .pressed: return frame.height * 0.025
+        }
+    }
+
+    private func selectStamp(_ option: StampOption) {
+        stampAnimationTask?.cancel()
+        selectedStampID = option.id
+        stampMotion = .settled
+
+        if accessibilityReduceMotion {
+            hasPlacedStamp = true
+            stampOpacity = 0
+            withAnimation(.easeInOut(duration: 0.2)) {
+                stampOpacity = 1
+            }
+            return
+        }
+
+        stampOpacity = 1
+        stampAnimationTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 16_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.16)) {
+                stampMotion = .lifted
+            }
+
+            try? await Task.sleep(nanoseconds: 160_000_000)
+            guard !Task.isCancelled else { return }
+            hasPlacedStamp = true
+            withAnimation(.easeIn(duration: 0.12)) {
+                stampMotion = .pressed
+            }
+
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.66)) {
+                stampMotion = .settled
+            }
+        }
+    }
+
     // MARK: - Step 4: logistics
 
     private var logistics: some View {
@@ -609,6 +810,20 @@ struct ComposerView: View {
                         }
                         .allowsHitTesting(false)
                     }
+
+                    if let selectedStamp {
+                        HStack(spacing: Tokens.Space.sm) {
+                            PostcardStampImage(option: selectedStamp)
+                                .frame(width: 42, height: 42)
+
+                            Text("Stamp")
+                                .font(Tokens.Font.caption)
+
+                            Spacer()
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Selected \(selectedStamp.accessibilityLabel)")
+                    }
                 }
                 .foregroundStyle(Tokens.Color.chromeText)
             }
@@ -624,7 +839,7 @@ struct ComposerView: View {
         case .template:
             return selectedTemplate != nil && assignments.count == selectedTemplate?.slotCount
         case .back:
-            return true
+            return selectedStamp != nil
         case .logistics:
             return true
         }
@@ -764,6 +979,7 @@ struct ComposerView: View {
             backFontId: backFontId,
             backFontPointSize: Double(selectedBackFontPointSize),
             backTextColorHex: backTextColorHex,
+            stampAssetID: selectedStampID,
             locationLabel: locationLabel,
             unlockDate: unlockDate
         )

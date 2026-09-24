@@ -49,6 +49,10 @@ enum ComposerLogic {
             return "Choose at least one photo."
         case .missingAssignments:
             return "Choose a template before sealing."
+        case .missingStamp:
+            return "Choose a stamp before sealing."
+        case .unknownStamp:
+            return "That stamp isn’t available. Choose another one."
         case .trustedTimeUnavailable:
             return "Can’t reach a trusted clock. Connect to the internet and try again."
         }
