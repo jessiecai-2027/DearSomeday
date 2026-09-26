@@ -76,7 +76,6 @@ struct PostcardDisplayView: View {
             try? await services.store.update(card)
         }
         guard card.state == .unlocked else {
-            revealed = false
             return false
         }
         await loadPhotos()

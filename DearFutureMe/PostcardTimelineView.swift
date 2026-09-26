@@ -49,8 +49,8 @@ struct PostcardTimelineView: View {
         NavigationStack {
             List {
                 ForEach(cards, id: \.id) { card in
-                    ObservableTimelineRow(card: card) { openedCard in
-                        deepLink = DeepLinkTarget(id: openedCard.id, card: openedCard)
+                    ObservableTimelineRow(card: card) {
+                        deepLink = DeepLinkTarget(id: card.id, card: card)
                     }
                         .timelineForegroundShadow()
                         .listRowBackground(Color.clear)
@@ -666,12 +666,12 @@ private extension View {
 /// without re-keying or rebuilding the entire timeline.
 private struct ObservableTimelineRow: View {
     @Bindable var card: Postcard
-    let onOpen: (Postcard) -> Void
+    let onOpen: () -> Void
 
     var body: some View {
         if card.state == .unlocked {
             Button {
-                onOpen(card)
+                onOpen()
             } label: {
                 TimelineRowView(card: card)
             }
