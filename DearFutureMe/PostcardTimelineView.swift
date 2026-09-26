@@ -15,6 +15,9 @@ struct PostcardTimelineView: View {
 
     /// §5.5 batch size.
     private static let pageSize = 50
+    /// Keep due cards current while the mailbox remains onscreen. This pass
+    /// uses the projected trusted clock and does not make a network request.
+    private static let unlockCheckInterval: Duration = .seconds(1)
     /// §7.1: prime once, after the first seal.
     private static let primedKey = "hasPrimedNotifications"
 
@@ -156,8 +159,13 @@ struct PostcardTimelineView: View {
         .onChange(of: timelineFilter) {
             Task { await reload() }
         }
-        // Fires on launch; the scenePhase handler covers every later foreground.
-        .task { await sweepAndReload() }
+        // Sync once on launch, then keep due cards current while the mailbox is
+        // onscreen. The scenePhase handler refreshes trusted time after every
+        // later foreground transition.
+        .task {
+            await sweepAndReload()
+            await monitorForDueCards()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await sweepAndReload() }
@@ -208,8 +216,9 @@ struct PostcardTimelineView: View {
 
             Spacer(minLength: Tokens.Space.xs)
 
+            /*
             #if DEBUG
-            // Keep debug utilities available without adding a second toolbar row.
+            // Debug utilities retained here for future development builds.
             Menu {
                 Button("Sweep") { Task { await sweepAndReload() } }
                 Button("Seed 20s") { Task { await seedDebugCard() } }
@@ -219,6 +228,7 @@ struct PostcardTimelineView: View {
             }
             .accessibilityLabel("Debug tools")
             #endif
+            */
 
             Button { showComposer = true } label: {
                 Image(systemName: "plus")
@@ -335,6 +345,28 @@ struct PostcardTimelineView: View {
         await reload()
     }
 
+    /// Unlocks cards as their due dates arrive while the timeline stays open.
+    /// `TrustedClock.now()` advances from its server-backed anchor using system
+    /// uptime, so this lightweight pass stays tamper-resistant without issuing
+    /// a network request every second. App suspension cancels useful work; the
+    /// foreground sweep catches up and refreshes the server anchor on return.
+    private func monitorForDueCards() async {
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: Self.unlockCheckInterval)
+            } catch {
+                return
+            }
+
+            guard scenePhase == .active, !isBusy else { continue }
+            let unlocked = await services.coordinator.unlockDueCards()
+            guard !unlocked.isEmpty else { continue }
+
+            await rescheduleNotifications()
+            await reload()
+        }
+    }
+
     /// Resets to the first page. Called after a sweep, a compose, or a delete —
     /// any change that can reorder or shrink the list.
     private func reload() async {
@@ -419,10 +451,10 @@ struct PostcardTimelineView: View {
 
     // MARK: - Debug seeding
 
+    /*
     #if DEBUG
-    // TODO: remove before release
-    /// Seals a real card 20 seconds out so the sweep can be watched on device:
-    /// background/foreground (or tap Sweep) after 20s and it shows the open envelope.
+    /// Seals a real card 20 seconds out so automatic unlocking can be watched
+    /// on device during future development.
     private func seedDebugCard() async {
         await services.clock.syncFromServer()
         guard case .trusted(let now) = services.clock.now() else {
@@ -443,6 +475,7 @@ struct PostcardTimelineView: View {
         }
     }
     #endif
+    */
 }
 
 private extension View {
