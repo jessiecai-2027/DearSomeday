@@ -49,22 +49,38 @@ struct PostcardDisplayView: View {
                 .font(Tokens.Font.button)
                 .padding()
         }
-        .task { await openGate() }
+        .task { await monitorGate() }
     }
 
     // MARK: - Gate
 
-    private func openGate() async {
+    /// Keeps a notification-opened waiting screen live. A device-time
+    /// notification may arrive just before trusted time reaches the same
+    /// instant, so retry locally without treating the notification as proof.
+    private func monitorGate() async {
+        while !Task.isCancelled {
+            if await openGate() { return }
+            do {
+                try await Task.sleep(for: .seconds(1))
+            } catch {
+                return
+            }
+        }
+    }
+
+    /// - Returns: `true` once contents may be revealed; otherwise `false` so
+    ///   the cancellable monitor can retry when trusted time advances.
+    private func openGate() async -> Bool {
         // Re-verify against trusted time; persist if this open is what unlocked it.
         if services.lifecycle.unlockIfDue(card) {
             try? await services.store.update(card)
         }
         guard card.state == .unlocked else {
-            revealed = false
-            return
+            return false
         }
         await loadPhotos()
         revealed = true
+        return true
     }
 
     private func loadPhotos() async {
