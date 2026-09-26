@@ -29,6 +29,9 @@ struct PostcardTimelineView: View {
     @State private var isLoadingPage = false
     @State private var timelineOffset = 0
     @State private var timelineFilter: PostcardTimelineFilter = .all
+    @State private var searchQuery = ""
+    @State private var isSearchPresented = false
+    @FocusState private var isSearchFieldFocused: Bool
 
     @State private var showComposer = false
     @State private var sealedDuringComposer = false
@@ -159,6 +162,9 @@ struct PostcardTimelineView: View {
         .onChange(of: timelineFilter) {
             Task { await reload() }
         }
+        .onChange(of: searchQuery) {
+            Task { await reload() }
+        }
         // Sync once on launch, then keep due cards current while the mailbox is
         // onscreen. The scenePhase handler refreshes trusted time after every
         // later foreground transition.
@@ -192,52 +198,86 @@ struct PostcardTimelineView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Text(timelineFilter.emptyTitle).font(Tokens.Font.headline)
-            Text(timelineFilter.emptyMessage)
-                .foregroundStyle(Tokens.Color.chromeText)
-            Button { showComposer = true } label: {
-                Text("Create a postcard")
-                    .font(Tokens.Font.button)
-                    .foregroundStyle(Tokens.Color.paperCream)
+        let isSearching = !PostcardTimelineSearch.normalizedQuery(searchQuery).isEmpty
+
+        return VStack(spacing: Tokens.Space.md) {
+            if isSearching {
+                Text("No matching postcards.")
+                    .font(Tokens.Font.headline)
+                Text("Try a different title or message.")
+                    .foregroundStyle(Tokens.Color.chromeText)
+                Button {
+                    searchQuery = ""
+                    isSearchFieldFocused = true
+                } label: {
+                    Text("Clear search")
+                        .font(Tokens.Font.button)
+                        .foregroundStyle(Tokens.Color.paperCream)
+                }
+                .buttonStyle(.borderedProminent)
+            } else {
+                Text(timelineFilter.emptyTitle).font(Tokens.Font.headline)
+                Text(timelineFilter.emptyMessage)
+                    .foregroundStyle(Tokens.Color.chromeText)
+                Button { showComposer = true } label: {
+                    Text("Create a postcard")
+                        .font(Tokens.Font.button)
+                        .foregroundStyle(Tokens.Color.paperCream)
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
         }
+        .multilineTextAlignment(.center)
         .timelineForegroundShadow()
     }
 
     private var mailboxHeader: some View {
-        HStack(spacing: Tokens.Space.sm) {
-            Text("Mailbox")
-                .font(Tokens.Font.screenTitle)
-                .foregroundStyle(Tokens.Color.inkEspresso)
-                .lineLimit(1)
-                .timelineForegroundShadow()
-
-            Spacer(minLength: Tokens.Space.xs)
-
-            /*
-            #if DEBUG
-            // Debug utilities retained here for future development builds.
-            Menu {
-                Button("Sweep") { Task { await sweepAndReload() } }
-                Button("Seed 20s") { Task { await seedDebugCard() } }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .frame(width: 28, height: 28)
-            }
-            .accessibilityLabel("Debug tools")
-            #endif
-            */
-
-            Button { showComposer = true } label: {
-                Image(systemName: "plus")
-                    .frame(width: 28, height: 28)
+        VStack(spacing: Tokens.Space.xs) {
+            HStack(spacing: Tokens.Space.sm) {
+                Text("Mailbox")
+                    .font(Tokens.Font.screenTitle)
+                    .foregroundStyle(Tokens.Color.inkEspresso)
+                    .lineLimit(1)
                     .timelineForegroundShadow()
-            }
-            .accessibilityLabel("New postcard")
 
-            filterControl
+                Spacer(minLength: Tokens.Space.xs)
+
+                /*
+                #if DEBUG
+                // Debug utilities retained here for future development builds.
+                Menu {
+                    Button("Sweep") { Task { await sweepAndReload() } }
+                    Button("Seed 20s") { Task { await seedDebugCard() } }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .frame(width: 28, height: 28)
+                }
+                .accessibilityLabel("Debug tools")
+                #endif
+                */
+
+                Button { presentSearch() } label: {
+                    Image(systemName: "magnifyingglass")
+                        .frame(width: 28, height: 28)
+                        .timelineForegroundShadow()
+                }
+                .accessibilityLabel("Search postcards")
+                .accessibilityAddTraits(isSearchPresented ? .isSelected : [])
+
+                Button { showComposer = true } label: {
+                    Image(systemName: "plus")
+                        .frame(width: 28, height: 28)
+                        .timelineForegroundShadow()
+                }
+                .accessibilityLabel("New postcard")
+
+                filterControl
+            }
+
+            if isSearchPresented {
+                searchField
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .screenMargins()
         .padding(.top, Tokens.Space.xxs)
@@ -259,6 +299,65 @@ struct PostcardTimelineView: View {
                 )
             }
             .ignoresSafeArea(edges: .top)
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: Tokens.Space.xs) {
+            HStack(spacing: Tokens.Space.xs) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(Tokens.Color.chromeTextMuted)
+
+                TextField("Search titles and messages", text: $searchQuery)
+                    .font(Tokens.Font.body)
+                    .focused($isSearchFieldFocused)
+                    .submitLabel(.search)
+                    .onSubmit { isSearchFieldFocused = false }
+
+                if !searchQuery.isEmpty {
+                    Button { searchQuery = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(Tokens.Color.chromeTextMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, Tokens.Space.sm)
+            .padding(.vertical, Tokens.Space.xs)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: Tokens.Radius.subtle))
+            .overlay {
+                RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
+                    .stroke(Tokens.Color.chromeDivider.opacity(0.7), lineWidth: 0.5)
+            }
+
+            Button("Cancel") { dismissSearch() }
+                .font(Tokens.Font.button)
+                .foregroundStyle(Tokens.Color.inkEspresso)
+        }
+        .timelineForegroundShadow()
+    }
+
+    private func presentSearch() {
+        guard !isSearchPresented else {
+            isSearchFieldFocused = true
+            return
+        }
+
+        withAnimation(Tokens.Motion.subtle) {
+            isSearchPresented = true
+        }
+        Task { @MainActor in
+            await Task.yield()
+            isSearchFieldFocused = true
+        }
+    }
+
+    private func dismissSearch() {
+        isSearchFieldFocused = false
+        searchQuery = ""
+        withAnimation(Tokens.Motion.subtle) {
+            isSearchPresented = false
         }
     }
 
@@ -371,8 +470,22 @@ struct PostcardTimelineView: View {
     /// any change that can reorder or shrink the list.
     private func reload() async {
         let filter = timelineFilter
+        let query = PostcardTimelineSearch.normalizedQuery(searchQuery)
+
+        if !query.isEmpty {
+            let results = await searchedCards(for: filter, query: query)
+            guard timelineFilter == filter,
+                  PostcardTimelineSearch.normalizedQuery(searchQuery) == query else { return }
+
+            cards = results
+            timelineOffset = 0
+            canLoadMore = false
+            return
+        }
+
         let page = await filteredPage(for: filter, startingAt: 0)
-        guard timelineFilter == filter else { return }
+        guard timelineFilter == filter,
+              PostcardTimelineSearch.normalizedQuery(searchQuery).isEmpty else { return }
 
         cards = page.cards
         timelineOffset = page.nextOffset
@@ -385,17 +498,52 @@ struct PostcardTimelineView: View {
     }
 
     private func loadNextPage() async {
-        guard canLoadMore, !isLoadingPage else { return }
+        guard canLoadMore,
+              !isLoadingPage,
+              PostcardTimelineSearch.normalizedQuery(searchQuery).isEmpty else { return }
         isLoadingPage = true
         defer { isLoadingPage = false }
 
         let filter = timelineFilter
         let page = await filteredPage(for: filter, startingAt: timelineOffset)
-        guard timelineFilter == filter else { return }
+        guard timelineFilter == filter,
+              PostcardTimelineSearch.normalizedQuery(searchQuery).isEmpty else { return }
 
         cards.append(contentsOf: page.cards)
         timelineOffset = page.nextOffset
         canLoadMore = page.hasMore
+    }
+
+    /// Search must inspect the complete timeline before ranking so a title
+    /// match on a later page still precedes an earlier message-only match.
+    private func searchedCards(
+        for filter: PostcardTimelineFilter,
+        query: String
+    ) async -> [Postcard] {
+        var offset = 0
+        var sourceCards: [Postcard] = []
+
+        while true {
+            guard timelineFilter == filter,
+                  PostcardTimelineSearch.normalizedQuery(searchQuery) == query,
+                  let source = try? await services.store.timeline(
+                      offset: offset,
+                      limit: Self.pageSize
+                  ) else {
+                return []
+            }
+
+            sourceCards.append(contentsOf: source)
+            offset += source.count
+
+            if source.count < Self.pageSize {
+                return PostcardTimelineSearch.results(
+                    in: sourceCards,
+                    query: query,
+                    filter: filter
+                )
+            }
+        }
     }
 
     /// Reads source pages until it has a useful page for the active filter or
