@@ -26,6 +26,7 @@ struct PostcardTimelineView: View {
     @State private var cards: [Postcard] = []
     @State private var canLoadMore = false
     @State private var isBusy = false
+    @State private var isUnlockCheckRunning = false
     @State private var isLoadingPage = false
     @State private var timelineOffset = 0
     @State private var timelineFilter: PostcardTimelineFilter = .all
@@ -48,7 +49,9 @@ struct PostcardTimelineView: View {
         NavigationStack {
             List {
                 ForEach(cards, id: \.id) { card in
-                    rowView(for: card)
+                    ObservableTimelineRow(card: card) { openedCard in
+                        deepLink = DeepLinkTarget(id: openedCard.id, card: openedCard)
+                    }
                         .timelineForegroundShadow()
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -153,10 +156,7 @@ struct PostcardTimelineView: View {
         .onChange(of: services.notificationRouter.pendingCardID) { _, newID in
             guard let newID else { return }
             Task {
-                if let card = try? await services.store.postcard(withID: newID) {
-                    deepLink = DeepLinkTarget(id: newID, card: card)
-                }
-                services.notificationRouter.pendingCardID = nil
+                await openNotificationTarget(withID: newID)
             }
         }
         .onChange(of: timelineFilter) {
@@ -165,35 +165,15 @@ struct PostcardTimelineView: View {
         .onChange(of: searchQuery) {
             Task { await reload() }
         }
-        // Sync once on launch, then keep due cards current while the mailbox is
-        // onscreen. The scenePhase handler refreshes trusted time after every
-        // later foreground transition.
-        .task {
+        // Key the task to scene phase instead of reading scenePhase from inside
+        // a long-running closure. A task created during launch can otherwise
+        // retain the initial `.inactive` environment value and skip every live
+        // check forever. SwiftUI cancels this task when the scene leaves active
+        // and starts one fresh monitor on each foreground transition.
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
             await sweepAndReload()
             await monitorForDueCards()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                Task { await sweepAndReload() }
-            }
-        }
-    }
-
-    // MARK: - Rows
-
-    @ViewBuilder
-    private func rowView(for card: Postcard) -> some View {
-        if card.state == .unlocked {
-            Button {
-                deepLink = DeepLinkTarget(id: card.id, card: card)
-            } label: {
-                TimelineRowView(card: card)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens this postcard")
-        } else {
-            // Taps explain the lock without opening or loading postcard contents.
-            LockedTimelineRow(card: card)
         }
     }
 
@@ -431,13 +411,17 @@ struct PostcardTimelineView: View {
     // MARK: - Sweep + paging
 
     /// Runs the launch/foreground sweep, re-schedules notifications (§5.7), then
-    /// refreshes from page one. The `isBusy` guard collapses the near-
+    /// refreshes from page one. The unlock-check guard collapses the near-
     /// simultaneous launch `.task` and first `.active` transition into one pass
     /// and blocks overlapping sweeps.
     private func sweepAndReload() async {
-        guard !isBusy else { return }
+        guard !isUnlockCheckRunning else { return }
+        isUnlockCheckRunning = true
         isBusy = true
-        defer { isBusy = false }
+        defer {
+            isBusy = false
+            isUnlockCheckRunning = false
+        }
 
         await services.coordinator.runSweep()
         await rescheduleNotifications()
@@ -457,12 +441,50 @@ struct PostcardTimelineView: View {
                 return
             }
 
-            guard scenePhase == .active, !isBusy else { continue }
-            let unlocked = await services.coordinator.unlockDueCards()
-            guard !unlocked.isEmpty else { continue }
+            await checkForDueCards()
+        }
+    }
 
-            await rescheduleNotifications()
-            await reload()
+    private func checkForDueCards() async {
+        guard !isUnlockCheckRunning else { return }
+        isUnlockCheckRunning = true
+        defer { isUnlockCheckRunning = false }
+
+        let unlocked = await services.coordinator.unlockDueCards()
+        guard !unlocked.isEmpty else { return }
+
+        // Do not rebuild the notification queue here. Rescheduling begins by
+        // deleting every pending request, which can cancel the just-due
+        // notification before iOS has a chance to present it.
+        await reload()
+    }
+
+    /// A local notification follows device time, so tapping one first waits
+    /// for any active mailbox check, refreshes trusted server time, and
+    /// refetches the card before presenting it. The display view performs the
+    /// same trusted-time gate while it remains onscreen.
+    private func openNotificationTarget(withID id: UUID) async {
+        while isUnlockCheckRunning, !Task.isCancelled {
+            do {
+                try await Task.sleep(for: .milliseconds(50))
+            } catch {
+                return
+            }
+        }
+        guard !Task.isCancelled else { return }
+
+        isUnlockCheckRunning = true
+        defer {
+            isUnlockCheckRunning = false
+            if services.notificationRouter.pendingCardID == id {
+                services.notificationRouter.pendingCardID = nil
+            }
+        }
+
+        await services.coordinator.runSweep()
+        await reload()
+        if let card = try? await services.store.postcard(withID: id) {
+            deepLink = DeepLinkTarget(id: id, card: card)
         }
     }
 
@@ -638,6 +660,28 @@ private extension View {
 }
 
 // MARK: - Row
+
+/// Owns observation of a single SwiftData model. Keeping the state branch here
+/// makes an in-place persisted transition replace the closed row immediately,
+/// without re-keying or rebuilding the entire timeline.
+private struct ObservableTimelineRow: View {
+    @Bindable var card: Postcard
+    let onOpen: (Postcard) -> Void
+
+    var body: some View {
+        if card.state == .unlocked {
+            Button {
+                onOpen(card)
+            } label: {
+                TimelineRowView(card: card)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens this postcard")
+        } else {
+            LockedTimelineRow(card: card)
+        }
+    }
+}
 
 private struct LockedTimelineRow: View {
     let card: Postcard

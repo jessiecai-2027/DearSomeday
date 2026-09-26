@@ -145,10 +145,44 @@ struct UnlockCoordinatorTests {
         #expect(await coordinator.runSweep().isEmpty)     // already unlocked → no-op
     }
 
+    @Test func repeatedLiveChecksAreIdempotentAndDoNotContactTheServer() async throws {
+        let server = CountingServerClock(instant: t0.addingTimeInterval(10 * hour))
+        let anchor = TrustedTimeSync(lastTrustedTime: t0, uptimeAtSync: 1_000)
+        let clock = TrustedClock(
+            store: InMemoryTrustedTimeStore(lastSync: anchor),
+            uptime: { 1_000 },
+            server: server
+        )
+        let lifecycle = PostcardLifecycle(clock: clock)
+        let store = InMemoryPostcardStore()
+        let coordinator = UnlockCoordinator(store: store, lifecycle: lifecycle, clock: clock)
+        let card = sealedCard("due", unlock: t0.addingTimeInterval(-hour))
+        try await store.create(card)
+
+        #expect(await coordinator.unlockDueCards().map(\.id) == [card.id])
+        #expect(await coordinator.unlockDueCards().isEmpty)
+        #expect(await coordinator.unlockDueCards().isEmpty)
+        #expect(await server.requestCount == 0)
+    }
+
     @Test func sweepWithNoSealedCardsIsAHarmlessNoOp() async throws {
         let (store, coordinator) = makeCoordinator(anchoredAt: t0, serverNow: t0)
         try await store.create(Postcard(title: "open", unlockDate: t0, state: .unlocked))
 
         #expect(await coordinator.runSweep().isEmpty)
+    }
+}
+
+private actor CountingServerClock: ServerClock {
+    let instant: Date?
+    private(set) var requestCount = 0
+
+    init(instant: Date?) {
+        self.instant = instant
+    }
+
+    func currentInstant() async -> Date? {
+        requestCount += 1
+        return instant
     }
 }
