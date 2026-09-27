@@ -155,6 +155,7 @@ struct ComposerView: View {
             tintOpacity: 0.68
         )
         .coordinateSpace(name: "composerRoot")
+        .simultaneousGesture(cropEditingDismissGesture)
         .overlayPreferenceValue(TemplatePickerAnchorPreferenceKey.self) { anchor in
             templatePickerOverlay(anchor: anchor)
         }
@@ -221,6 +222,7 @@ struct ComposerView: View {
         .scrollContentBackground(.hidden)
         .background(.clear)
         .scrollDismissesKeyboard(.interactively)
+        .scrollDisabled(isEditingPhotoCrop)
     }
 
     private var footer: some View {
@@ -502,14 +504,20 @@ struct ComposerView: View {
         .onPreferenceChange(TemplateCanvasFramePreferenceKey.self) {
             templateCanvasFrame = $0
         }
-        .simultaneousGesture(
-            SpatialTapGesture(coordinateSpace: .named("composerRoot"))
-                .onEnded { value in
-                    if !templateCanvasFrame.contains(value.location) {
-                        selectedSlotID = nil
-                    }
+    }
+
+    private var isEditingPhotoCrop: Bool {
+        step == .template && selectedSlotID != nil
+    }
+
+    private var cropEditingDismissGesture: some Gesture {
+        SpatialTapGesture(coordinateSpace: .named("composerRoot"))
+            .onEnded { value in
+                guard isEditingPhotoCrop else { return }
+                if !templateCanvasFrame.contains(value.location) {
+                    selectedSlotID = nil
                 }
-        )
+            }
     }
 
     @ViewBuilder
