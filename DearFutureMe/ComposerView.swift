@@ -1122,7 +1122,7 @@ private struct TemplateCanvasView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            ZStack(alignment: .topLeading) {
                 Rectangle()
                     .fill(Color(red: 0.95, green: 0.90, blue: 0.82))
 
@@ -1163,10 +1163,6 @@ private struct TemplateCanvasView: View {
                 lineWidth: selectedSlotID == slot.id ? 3 : (showsBarriers ? 3 : 0)
             )
         )
-        .position(
-            x: CGFloat(slot.x + slot.width / 2) * size.width,
-            y: CGFloat(slot.y + slot.height / 2) * size.height
-        )
         .contentShape(Rectangle())
         .highPriorityGesture(
             TapGesture().onEnded {
@@ -1175,6 +1171,13 @@ private struct TemplateCanvasView: View {
         )
         .gesture(dragGesture(for: slot, slotSize: slotSize))
         .simultaneousGesture(magnifyGesture(for: slot))
+        // Keep the gesture-bearing view at the slot's actual size. Attaching
+        // gestures after `position` makes every positioned child participate
+        // in the full canvas layout region, so the last slot wins hit testing.
+        .offset(
+            x: CGFloat(slot.x) * size.width,
+            y: CGFloat(slot.y) * size.height
+        )
     }
 
     private func dragGesture(for slot: TemplateSlot, slotSize: CGSize) -> some Gesture {
