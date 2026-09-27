@@ -13,6 +13,56 @@ import UIKit
 enum PostcardCanvasMetrics {
     static let aspectRatio: CGFloat = 2.0 / 3.0
     static let maxWidth: CGFloat = 340
+    static let photoBarrierWidth: CGFloat = 5
+}
+
+struct PostcardPhotoBarriers: View {
+    let template: CardTemplate
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Path { path in
+                    for slot in template.slots {
+                        if slot.y > 0.0001 {
+                            path.move(to: CGPoint(
+                                x: CGFloat(slot.x) * proxy.size.width,
+                                y: CGFloat(slot.y) * proxy.size.height
+                            ))
+                            path.addLine(to: CGPoint(
+                                x: CGFloat(slot.x + slot.width) * proxy.size.width,
+                                y: CGFloat(slot.y) * proxy.size.height
+                            ))
+                        }
+
+                        if slot.x > 0.0001 {
+                            path.move(to: CGPoint(
+                                x: CGFloat(slot.x) * proxy.size.width,
+                                y: CGFloat(slot.y) * proxy.size.height
+                            ))
+                            path.addLine(to: CGPoint(
+                                x: CGFloat(slot.x) * proxy.size.width,
+                                y: CGFloat(slot.y + slot.height) * proxy.size.height
+                            ))
+                        }
+                    }
+                }
+                .stroke(
+                    .white,
+                    style: StrokeStyle(
+                        lineWidth: PostcardCanvasMetrics.photoBarrierWidth,
+                        lineCap: .butt,
+                        lineJoin: .miter
+                    )
+                )
+
+                Rectangle()
+                    .strokeBorder(.white, lineWidth: PostcardCanvasMetrics.photoBarrierWidth)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 }
 
 enum PostcardBackLayout {

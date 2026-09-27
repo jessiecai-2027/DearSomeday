@@ -333,6 +333,26 @@ struct PhotoCrop: Codable, Equatable, Hashable {
         self.offsetX = offsetX
         self.offsetY = offsetY
     }
+
+    func constrained(sourceAspect: CGFloat, targetAspect: CGFloat) -> PhotoCrop {
+        guard sourceAspect.isFinite, sourceAspect > 0,
+              targetAspect.isFinite, targetAspect > 0 else {
+            return .centered
+        }
+
+        let constrainedScale = scale.isFinite ? min(max(scale, 1), 4) : 1
+        let aspectRatio = Double(sourceAspect / targetAspect)
+        let renderedWidth = constrainedScale * max(1, aspectRatio)
+        let renderedHeight = constrainedScale * max(1, 1 / aspectRatio)
+        let maximumOffsetX = max(0, (renderedWidth - 1) / 2)
+        let maximumOffsetY = max(0, (renderedHeight - 1) / 2)
+
+        return PhotoCrop(
+            scale: constrainedScale,
+            offsetX: min(max(offsetX.isFinite ? offsetX : 0, -maximumOffsetX), maximumOffsetX),
+            offsetY: min(max(offsetY.isFinite ? offsetY : 0, -maximumOffsetY), maximumOffsetY)
+        )
+    }
 }
 
 struct AnimationCue: Codable, Equatable, Hashable {

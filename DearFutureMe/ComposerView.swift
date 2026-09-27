@@ -563,6 +563,7 @@ struct ComposerView: View {
                         )
                         .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
                     }
+                    .environment(\.colorScheme, .light)
                     .frame(width: paletteWidth, alignment: .leading)
                     .offset(x: paletteX, y: sourceFrame.maxY - 55)
                     .transition(
@@ -1356,8 +1357,32 @@ private struct TemplateCanvasView: View {
                 ForEach(template.slots) { slot in
                     slotView(slot, in: proxy.size)
                 }
+
+                if showsBarriers {
+                    PostcardPhotoBarriers(template: template)
+                }
+
+                if let selectedSlot = template.slots.first(where: { $0.id == selectedSlotID }) {
+                    Rectangle()
+                        .stroke(.blue, lineWidth: 3)
+                        .frame(
+                            width: CGFloat(selectedSlot.width) * proxy.size.width,
+                            height: CGFloat(selectedSlot.height) * proxy.size.height
+                        )
+                        .offset(
+                            x: CGFloat(selectedSlot.x) * proxy.size.width,
+                            y: CGFloat(selectedSlot.y) * proxy.size.height
+                        )
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
             }
-            .overlay(Rectangle().stroke(.gray.opacity(0.35), lineWidth: 1))
+            .overlay(
+                Rectangle().stroke(
+                    .gray.opacity(0.35),
+                    lineWidth: showsBarriers ? 0 : 1
+                )
+            )
             .clipped()
         }
     }
@@ -1366,7 +1391,10 @@ private struct TemplateCanvasView: View {
         let slotSize = CGSize(width: CGFloat(slot.width) * size.width, height: CGFloat(slot.height) * size.height)
         let assignment = assignments.first { $0.slotID == slot.id }
         let photo = assignment.flatMap { assignment in photos.first { $0.id == assignment.photoID } }
-        let crop = assignment?.crop ?? .centered
+        let crop = (assignment?.crop ?? .centered).constrained(
+            sourceAspect: photo?.aspect ?? slot.aspect,
+            targetAspect: slot.aspect
+        )
 
         return ZStack {
             Rectangle().fill(.white)
@@ -1384,12 +1412,6 @@ private struct TemplateCanvasView: View {
         }
         .frame(width: slotSize.width, height: slotSize.height)
         .clipped()
-        .overlay(
-            Rectangle().stroke(
-                selectedSlotID == slot.id ? .blue : .white,
-                lineWidth: selectedSlotID == slot.id ? 3 : (showsBarriers ? 3 : 0)
-            )
-        )
         .contentShape(Rectangle())
         .highPriorityGesture(
             TapGesture().onEnded {
@@ -1417,8 +1439,12 @@ private struct TemplateCanvasView: View {
                     dragStartCrop = assignments[index].crop
                 }
                 let start = dragStartCrop ?? assignments[index].crop
-                assignments[index].crop.offsetX = start.offsetX + Double(value.translation.width / max(slotSize.width, 1))
-                assignments[index].crop.offsetY = start.offsetY + Double(value.translation.height / max(slotSize.height, 1))
+                let proposedCrop = PhotoCrop(
+                    scale: start.scale,
+                    offsetX: start.offsetX + Double(value.translation.width / max(slotSize.width, 1)),
+                    offsetY: start.offsetY + Double(value.translation.height / max(slotSize.height, 1))
+                )
+                assignments[index].crop = constrainedCrop(proposedCrop, for: slot, assignmentIndex: index)
             }
             .onEnded { _ in
                 dragStartCrop = nil
@@ -1436,12 +1462,24 @@ private struct TemplateCanvasView: View {
                     magnifyStartScale = assignments[index].crop.scale
                 }
                 let start = magnifyStartScale ?? assignments[index].crop.scale
-                assignments[index].crop.scale = min(max(start * Double(value), 1), 4)
+                var proposedCrop = assignments[index].crop
+                proposedCrop.scale = start * Double(value)
+                assignments[index].crop = constrainedCrop(proposedCrop, for: slot, assignmentIndex: index)
             }
             .onEnded { _ in
                 magnifyStartScale = nil
                 magnifyStartSlotID = nil
             }
+    }
+
+    private func constrainedCrop(
+        _ crop: PhotoCrop,
+        for slot: TemplateSlot,
+        assignmentIndex: Int
+    ) -> PhotoCrop {
+        let photoID = assignments[assignmentIndex].photoID
+        let sourceAspect = photos.first(where: { $0.id == photoID })?.aspect ?? slot.aspect
+        return crop.constrained(sourceAspect: sourceAspect, targetAspect: slot.aspect)
     }
 
     private func selectSlot(_ slotID: String) {

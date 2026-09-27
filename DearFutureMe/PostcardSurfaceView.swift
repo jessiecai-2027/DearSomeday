@@ -104,8 +104,17 @@ struct PostcardFrontView: View {
                 ForEach(template.slots) { slot in
                     slotView(slot, in: proxy.size)
                 }
+
+                if template.slotCount > 1 {
+                    PostcardPhotoBarriers(template: template)
+                }
             }
-            .overlay(Rectangle().stroke(Tokens.Color.paperTan.opacity(0.7), lineWidth: 1))
+            .overlay(
+                Rectangle().stroke(
+                    Tokens.Color.paperTan.opacity(0.7),
+                    lineWidth: template.slotCount > 1 ? 0 : 1
+                )
+            )
             .clipped()
         }
     }
@@ -117,7 +126,13 @@ struct PostcardFrontView: View {
         )
         let assignment = assignmentsBySlot[slot.id]
         let image = image(for: assignment)
-        let crop = assignment?.crop ?? .centered
+        let imageAspect = image.map { image in
+            image.size.height > 0 ? image.size.width / image.size.height : slot.aspect
+        } ?? slot.aspect
+        let crop = (assignment?.crop ?? .centered).constrained(
+            sourceAspect: imageAspect,
+            targetAspect: slot.aspect
+        )
 
         return ZStack {
             Rectangle().fill(.white)
@@ -145,7 +160,6 @@ struct PostcardFrontView: View {
         }
         .frame(width: slotSize.width, height: slotSize.height)
         .clipped()
-        .overlay(Rectangle().stroke(.white, lineWidth: template.slotCount > 1 ? 3 : 0))
         .position(
             x: CGFloat(slot.x + slot.width / 2) * size.width,
             y: CGFloat(slot.y + slot.height / 2) * size.height

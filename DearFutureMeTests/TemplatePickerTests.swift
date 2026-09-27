@@ -111,4 +111,26 @@ struct TemplatePickerTests {
 
         #expect(card.animationMetadata.isEmpty)
     }
+
+    @Test func cropOffsetsCannotExposeEmptySpace() {
+        let crop = PhotoCrop(scale: 1, offsetX: 10, offsetY: -10)
+            .constrained(sourceAspect: 2, targetAspect: 1)
+
+        #expect(crop.offsetX == 0.5)
+        #expect(crop.offsetY == 0)
+    }
+
+    @Test func cropOffsetsExpandAndReclampWithZoom() {
+        let zoomed = PhotoCrop(scale: 2, offsetX: 10, offsetY: -10)
+            .constrained(sourceAspect: 0.5, targetAspect: 1)
+
+        #expect(zoomed.offsetX == 0.5)
+        #expect(zoomed.offsetY == -1.5)
+
+        let zoomedOut = PhotoCrop(scale: 1, offsetX: zoomed.offsetX, offsetY: zoomed.offsetY)
+            .constrained(sourceAspect: 0.5, targetAspect: 1)
+
+        #expect(zoomedOut.offsetX == 0)
+        #expect(zoomedOut.offsetY == -0.5)
+    }
 }
