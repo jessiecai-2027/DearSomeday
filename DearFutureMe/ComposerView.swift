@@ -24,6 +24,25 @@ private struct PostcardCanvasSizePreferenceKey: PreferenceKey {
     }
 }
 
+private struct TemplateCanvasFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if !next.isEmpty {
+            value = next
+        }
+    }
+}
+
+private struct TemplatePickerAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect?
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
 private struct StampPickerAnchorPreferenceKey: PreferenceKey {
     static var defaultValue: CGRect?
 
@@ -52,6 +71,8 @@ struct ComposerView: View {
     @State private var selectedTemplate: CardTemplate?
     @State private var assignments: [SlotAssignment] = []
     @State private var selectedSlotID: String?
+    @State private var templateCanvasFrame: CGRect = .zero
+    @State private var isTemplatePickerPresented = false
     @State private var photoBarriersEnabled = true
 
     @State private var title = ""
@@ -134,6 +155,9 @@ struct ComposerView: View {
             tintOpacity: 0.68
         )
         .coordinateSpace(name: "composerRoot")
+        .overlayPreferenceValue(TemplatePickerAnchorPreferenceKey.self) { anchor in
+            templatePickerOverlay(anchor: anchor)
+        }
         .overlayPreferenceValue(StampPickerAnchorPreferenceKey.self) { anchor in
             stampPickerOverlay(anchor: anchor)
         }
@@ -358,36 +382,91 @@ struct ComposerView: View {
 
     private var templateSelection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Choose a template")
-                .font(Tokens.Font.headline)
-
             let ranked = rankedTemplates
             if ranked.isEmpty {
                 Text("Choose photos first.")
                     .foregroundStyle(Tokens.Color.chromeText)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(ranked) { template in
-                            TemplateThumbnail(
-                                template: template,
-                                isSelected: selectedTemplate?.id == template.id
+                if let selectedTemplate {
+                    HStack(spacing: Tokens.Space.sm) {
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                                isTemplatePickerPresented = true
+                            }
+                        } label: {
+                            HStack(spacing: Tokens.Space.sm) {
+                                TemplateLayoutPreview(template: selectedTemplate)
+                                    .frame(width: 36, height: 45)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Template")
+                                        .font(Tokens.Font.caption2)
+                                        .foregroundStyle(.secondary)
+                                    Text(selectedTemplate.name)
+                                        .font(Tokens.Font.subheadline.weight(.semibold))
+                                        .lineLimit(1)
+                                }
+
+                                Spacer(minLength: Tokens.Space.xs)
+
+                                Image(systemName: "chevron.down")
+                                    .font(Tokens.Font.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .foregroundStyle(Tokens.Color.chromeText)
+                            .padding(.horizontal, Tokens.Space.sm)
+                            .padding(.vertical, Tokens.Space.xs)
+                            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                                    .fill(Tokens.Color.paperCream.opacity(0.82))
                             )
-                            .onTapGesture {
-                                selectTemplate(template)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                                    .stroke(Tokens.Color.chromeDivider, lineWidth: 1)
+                            )
+                            .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Choose template, " + selectedTemplate.name + " selected")
+                        .accessibilityHint("Opens the template gallery")
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: TemplatePickerAnchorPreferenceKey.self,
+                                    value: proxy.frame(in: .named("composerRoot"))
+                                )
                             }
                         }
+
+                        Button {
+                            photoBarriersEnabled.toggle()
+                        } label: {
+                            Image(systemName: "rectangle.split.2x1")
+                                .font(.system(size: 17, weight: .semibold))
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                                        .fill(
+                                            photoBarriersEnabled
+                                                ? Color.blue.opacity(0.14)
+                                                : Tokens.Color.paperCream.opacity(0.82)
+                                        )
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                                        .stroke(
+                                            photoBarriersEnabled ? Color.blue : Tokens.Color.chromeDivider,
+                                            lineWidth: photoBarriersEnabled ? 2 : 1
+                                        )
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(photoBarriersEnabled ? Color.blue : Tokens.Color.chromeText)
+                        .accessibilityLabel("Barriers between photos")
+                        .accessibilityValue(photoBarriersEnabled ? "On" : "Off")
                     }
-                    .padding(.vertical, 4)
-                }
-
-                if let selectedTemplate {
-                    Toggle("Barriers between photos", isOn: $photoBarriersEnabled)
-                        .font(Tokens.Font.subheadline)
-
-                    Text("Tap a photo, then drag or pinch to adjust it.")
-                        .font(Tokens.Font.caption)
-                        .foregroundStyle(Tokens.Color.chromeText)
 
                     TemplateCanvasView(
                         template: selectedTemplate,
@@ -398,18 +477,101 @@ struct ComposerView: View {
                     )
                     .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
                     .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: TemplateCanvasFramePreferenceKey.self,
+                                value: proxy.frame(in: .named("composerRoot"))
+                            )
+                        }
+                    }
                     .frame(maxWidth: .infinity)
 
-                    Button("Reset selected crop") {
-                        resetSelectedCrop()
+                    if selectedSlotID != nil {
+                        Button("Reset Crop") {
+                            resetSelectedCrop()
+                        }
+                        .font(Tokens.Font.button)
+                        .buttonStyle(.bordered)
+                        .transition(.opacity)
                     }
-                    .font(Tokens.Font.button)
-                    .buttonStyle(.bordered)
-                    .disabled(selectedSlotID == nil)
                 }
             }
         }
         .onAppear { ensureTemplateSelection() }
+        .onPreferenceChange(TemplateCanvasFramePreferenceKey.self) {
+            templateCanvasFrame = $0
+        }
+        .simultaneousGesture(
+            SpatialTapGesture(coordinateSpace: .named("composerRoot"))
+                .onEnded { value in
+                    if !templateCanvasFrame.contains(value.location) {
+                        selectedSlotID = nil
+                    }
+                }
+        )
+    }
+
+    @ViewBuilder
+    private func templatePickerOverlay(anchor: CGRect?) -> some View {
+        GeometryReader { proxy in
+            if isTemplatePickerPresented, step == .template, let sourceFrame = anchor {
+                let screenMargin: CGFloat = 12
+                let arrowWidth: CGFloat = 20
+                let paletteWidth = min(CGFloat(340), max(CGFloat(240), proxy.size.width - screenMargin * 2))
+                let minimumX = screenMargin
+                let maximumX = max(minimumX, proxy.size.width - paletteWidth - screenMargin)
+                let paletteX = min(
+                    max(sourceFrame.midX - paletteWidth / 2, minimumX),
+                    maximumX
+                )
+                let arrowX = min(
+                    max(sourceFrame.midX - paletteX - arrowWidth / 2, 14),
+                    paletteWidth - arrowWidth - 14
+                )
+
+                ZStack(alignment: .topLeading) {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.16)) {
+                                isTemplatePickerPresented = false
+                            }
+                        }
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        StampPopoverArrow()
+                            .fill(.regularMaterial)
+                            .frame(width: arrowWidth, height: 11)
+                            .padding(.leading, arrowX)
+
+                        TemplatePickerPopover(
+                            templates: rankedTemplates,
+                            selectedTemplateID: selectedTemplate?.id,
+                            width: paletteWidth
+                        ) { template in
+                            selectTemplate(template)
+                            withAnimation(.easeOut(duration: 0.16)) {
+                                isTemplatePickerPresented = false
+                            }
+                        }
+                        .background(
+                            .regularMaterial,
+                            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        )
+                        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+                    }
+                    .frame(width: paletteWidth, alignment: .leading)
+                    .offset(x: paletteX, y: sourceFrame.maxY - 55)
+                    .transition(
+                        .scale(scale: 0.94, anchor: .topTrailing)
+                            .combined(with: .opacity)
+                    )
+                }
+            }
+        }
     }
 
     private var rankedTemplates: [CardTemplate] {
@@ -848,6 +1010,7 @@ struct ComposerView: View {
     private func goNext() {
         errorMessage = nil
         focusedField = nil
+        isTemplatePickerPresented = false
         if step == .photos {
             ensureTemplateSelection()
         }
@@ -858,6 +1021,7 @@ struct ComposerView: View {
     private func goBack() {
         errorMessage = nil
         focusedField = nil
+        isTemplatePickerPresented = false
         guard let previous = Step(rawValue: step.rawValue - 1) else { return }
         step = previous
     }
@@ -1071,40 +1235,103 @@ struct ComposerView: View {
     }
 }
 
-// MARK: - Template preview
+// MARK: - Template picker
 
-private struct TemplateThumbnail: View {
+private struct TemplateLayoutPreview: View {
     let template: CardTemplate
-    let isSelected: Bool
 
     var body: some View {
-        VStack(spacing: 8) {
-            GeometryReader { proxy in
-                ZStack {
+        GeometryReader { proxy in
+            ZStack {
+                Rectangle()
+                    .fill(Color(red: 0.95, green: 0.90, blue: 0.82))
+                ForEach(template.slots) { slot in
                     Rectangle()
-                        .fill(Color(red: 0.95, green: 0.90, blue: 0.82))
-                    ForEach(template.slots) { slot in
-                        Rectangle()
-                            .fill(.gray.opacity(0.25))
-                            .overlay(Rectangle().stroke(.white, lineWidth: 2))
-                            .frame(width: CGFloat(slot.width) * proxy.size.width, height: CGFloat(slot.height) * proxy.size.height)
-                            .position(
-                                x: CGFloat(slot.x + slot.width / 2) * proxy.size.width,
-                                y: CGFloat(slot.y + slot.height / 2) * proxy.size.height
-                            )
-                    }
+                        .fill(.gray.opacity(0.25))
+                        .overlay(Rectangle().stroke(.white, lineWidth: 2))
+                        .frame(
+                            width: CGFloat(slot.width) * proxy.size.width,
+                            height: CGFloat(slot.height) * proxy.size.height
+                        )
+                        .position(
+                            x: CGFloat(slot.x + slot.width / 2) * proxy.size.width,
+                            y: CGFloat(slot.y + slot.height / 2) * proxy.size.height
+                        )
                 }
-                .clipped()
             }
-            .frame(width: 96, height: 120)
             .overlay(Rectangle().stroke(.gray.opacity(0.35), lineWidth: 1))
-            .overlay(Rectangle().stroke(isSelected ? .blue : .clear, lineWidth: 3))
-
-            Text(template.name)
-                .font(Tokens.Font.caption)
-                .lineLimit(1)
-                .frame(width: 112)
+            .clipped()
         }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct TemplatePickerPopover: View {
+    let templates: [CardTemplate]
+    let selectedTemplateID: String?
+    let width: CGFloat
+    let onSelect: (CardTemplate) -> Void
+
+    private let columns = Array(
+        repeating: GridItem(.flexible(), spacing: Tokens.Space.sm),
+        count: 2
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.sm) {
+            Text("Choose a Template")
+                .font(Tokens.Font.headline)
+
+            LazyVGrid(columns: columns, spacing: Tokens.Space.sm) {
+                ForEach(templates) { template in
+                    let isSelected = selectedTemplateID == template.id
+
+                    Button {
+                        onSelect(template)
+                    } label: {
+                        VStack(spacing: Tokens.Space.xs) {
+                            TemplateLayoutPreview(template: template)
+                                .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
+                                .overlay(alignment: .topTrailing) {
+                                    if isSelected {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .symbolRenderingMode(.palette)
+                                            .foregroundStyle(.white, .blue)
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .padding(Tokens.Space.xxs)
+                                    }
+                                }
+
+                            Text(template.name)
+                                .font(Tokens.Font.caption.weight(.semibold))
+                                .foregroundStyle(Tokens.Color.chromeText)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .padding(Tokens.Space.xs)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                                .fill(Tokens.Color.paperCream.opacity(0.72))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                                .stroke(
+                                    isSelected ? Color.blue : Tokens.Color.chromeDivider,
+                                    lineWidth: isSelected ? 3 : 1
+                                )
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(template.name)
+                    .accessibilityValue(isSelected ? "Selected" : "")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+        }
+        .padding(Tokens.Space.md)
+        .frame(width: width)
     }
 }
 
