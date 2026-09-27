@@ -110,6 +110,20 @@ final class PostcardCreationService {
                 aspect: Double(photo.aspect)
             )
         }
+        let photosByID = Dictionary(uniqueKeysWithValues: input.photos.map { ($0.id, $0) })
+        let slotsByID = Dictionary(uniqueKeysWithValues: input.template.slots.map { ($0.id, $0) })
+        let constrainedAssignments = input.assignments.map { assignment in
+            guard let photo = photosByID[assignment.photoID],
+                  let slot = slotsByID[assignment.slotID]
+            else { return assignment }
+
+            var constrained = assignment
+            constrained.crop = assignment.crop.constrained(
+                sourceAspect: photo.aspect,
+                targetAspect: slot.renderedAspect()
+            )
+            return constrained
+        }
         let backText = input.backText.trimmingCharacters(in: .whitespacesAndNewlines)
         let location = input.locationLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
         let stampFrame = PostcardBackLayout.normalizedStampFrame
@@ -127,7 +141,7 @@ final class PostcardCreationService {
             message: backText,
             photos: storedPhotos,
             templateId: input.template.id,
-            slotAssignments: input.assignments,
+            slotAssignments: constrainedAssignments,
             backText: backText,
             backFontId: input.backFontId,
             backFontPointSize: input.backFontPointSize,

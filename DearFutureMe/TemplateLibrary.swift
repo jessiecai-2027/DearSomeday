@@ -107,10 +107,10 @@ extension CardTemplate {
         guard photoAspects.count >= slotCount, slotCount > 0 else { return 0 }
 
         let photos = photoAspects.sorted(by: >).prefix(slotCount)
-        let ordered = slots.sorted { $0.aspect > $1.aspect }
+        let ordered = slots.sorted { $0.renderedAspect() > $1.renderedAspect() }
 
         let retained = zip(ordered, photos).map { slot, photo -> Double in
-            let s = Double(slot.aspect), p = Double(photo)
+            let s = Double(slot.renderedAspect()), p = Double(photo)
             return s > p ? p / s : s / p
         }
         return retained.reduce(0, +) / Double(retained.count)
@@ -122,13 +122,13 @@ extension CardTemplate {
             .sorted { (aspects[$0] ?? 1) > (aspects[$1] ?? 1) }
             .prefix(slotCount)
 
-        let sortedSlots = slots.sorted { $0.aspect > $1.aspect }
+        let sortedSlots = slots.sorted { $0.renderedAspect() > $1.renderedAspect() }
 
         return zip(sortedSlots, sortedPhotos).map { slot, photoID in
             SlotAssignment(
                 slotID: slot.id,
                 photoID: photoID,
-                crop: .centred(source: aspects[photoID] ?? 1, target: slot.aspect)
+                crop: .centred(source: aspects[photoID] ?? 1, target: slot.renderedAspect())
             )
         }
     }

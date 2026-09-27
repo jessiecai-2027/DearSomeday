@@ -268,6 +268,8 @@ struct StoredPhoto: Codable, Equatable, Hashable {
 // MARK: - Template placement
 
 struct CardTemplate: Identifiable, Codable, Equatable, Hashable {
+    static let canvasAspectRatio: CGFloat = 2.0 / 3.0
+
     var id: String = ""
     var name: String = ""
     var slots: [TemplateSlot] = []
@@ -289,9 +291,9 @@ struct TemplateSlot: Identifiable, Codable, Equatable, Hashable {
     var width: Double = 1
     var height: Double = 1
 
-    var aspect: CGFloat {
-        guard height != 0 else { return 1 }
-        return CGFloat(width / height)
+    func renderedAspect(in canvasAspect: CGFloat = CardTemplate.canvasAspectRatio) -> CGFloat {
+        guard height != 0, canvasAspect.isFinite, canvasAspect > 0 else { return 1 }
+        return CGFloat(width / height) * canvasAspect
     }
 
     init(id: String = "", x: Double = 0, y: Double = 0, width: Double = 1, height: Double = 1) {

@@ -133,4 +133,68 @@ struct TemplatePickerTests {
         #expect(zoomedOut.offsetX == 0)
         #expect(zoomedOut.offsetY == -0.5)
     }
+
+    @Test func renderedSlotAspectsMatchTheirFramesInThePostcardCanvas() {
+        let canvasSize = CGSize(width: 300, height: 450)
+
+        for template in TemplatePicker.all {
+            for slot in template.slots {
+                let frameWidth = CGFloat(slot.width) * canvasSize.width
+                let frameHeight = CGFloat(slot.height) * canvasSize.height
+                let frameAspect = frameWidth / frameHeight
+
+                #expect(abs(slot.renderedAspect() - frameAspect) < 0.000_001)
+            }
+        }
+    }
+
+    @Test func everyTemplateCropConstraintKeepsEverySlotCovered() {
+        let sourceAspects: [CGFloat] = [0.4, 1, 2.5]
+        let scales: [Double] = [1, 1.75, 4]
+        let extremeOffsets: [(Double, Double)] = [
+            (-100, -100),
+            (-100, 100),
+            (100, -100),
+            (100, 100),
+        ]
+
+        for template in TemplatePicker.all {
+            for slot in template.slots {
+                let targetAspect = slot.renderedAspect()
+
+                for sourceAspect in sourceAspects {
+                    for scale in scales {
+                        for (offsetX, offsetY) in extremeOffsets {
+                            let crop = PhotoCrop(scale: scale, offsetX: offsetX, offsetY: offsetY)
+                                .constrained(sourceAspect: sourceAspect, targetAspect: targetAspect)
+                            let sourceToTarget = Double(sourceAspect / targetAspect)
+                            let renderedWidth = crop.scale * max(1, sourceToTarget)
+                            let renderedHeight = crop.scale * max(1, 1 / sourceToTarget)
+
+                            #expect(abs(crop.offsetX) + 0.5 <= renderedWidth / 2 + 0.000_001)
+                            #expect(abs(crop.offsetY) + 0.5 <= renderedHeight / 2 + 0.000_001)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test func stackedAndVerticalTemplatesUsePhysicalSlotAspects() throws {
+        let stacked = try #require(TemplatePicker.all.first { $0.id == "two-horizontal" })
+        let vertical = try #require(TemplatePicker.all.first { $0.id == "two-vertical" })
+        let stackedSlot = try #require(stacked.slots.first)
+        let verticalSlot = try #require(vertical.slots.first)
+
+        #expect(abs(stackedSlot.renderedAspect() - 4.0 / 3.0) < 0.000_001)
+        #expect(abs(verticalSlot.renderedAspect() - 1.0 / 3.0) < 0.000_001)
+
+        let stackedCrop = PhotoCrop(scale: 1, offsetY: 100)
+            .constrained(sourceAspect: 0.75, targetAspect: stackedSlot.renderedAspect())
+        #expect(abs(stackedCrop.offsetY - 7.0 / 18.0) < 0.000_001)
+
+        let verticalCrop = PhotoCrop(scale: 1, offsetY: 100)
+            .constrained(sourceAspect: 0.46, targetAspect: verticalSlot.renderedAspect())
+        #expect(verticalCrop.offsetY == 0)
+    }
 }

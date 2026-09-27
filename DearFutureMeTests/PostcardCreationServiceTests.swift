@@ -71,6 +71,7 @@ struct PostcardCreationServiceTests {
             backFontId: "serif",
             backFontPointSize: 14.25,
             backTextColorHex: "#111111",
+            stampAssetID: "golden-flower",
             locationLabel: "Seattle",
             unlockDate: now.addingTimeInterval(86_400)
         ))
@@ -131,12 +132,49 @@ struct PostcardCreationServiceTests {
                 backText: "",
                 backFontId: nil,
                 backTextColorHex: "#2B241E",
+                stampAssetID: "golden-flower",
                 locationLabel: nil,
                 unlockDate: now.addingTimeInterval(86_400)
             ))
         }
 
         #expect(photoStore.loadData(fileName: photo.fileName) == nil)
+    }
+
+    @Test func createConstrainsCropBeforePersisting() async throws {
+        let store = InMemoryPostcardStore()
+        let photoStore = try tempPhotoStore()
+        let clock = makeClock()
+        let service = service(store: store, photoStore: photoStore, clock: clock)
+        let photo = try service.importPhoto(solidImage(width: 600, height: 1200))
+        let template = CardTemplate(id: "stacked", name: "Stacked", slots: [
+            TemplateSlot(id: "a", x: 0, y: 0, width: 1, height: 0.5),
+        ])
+        let assignment = SlotAssignment(
+            slotID: "a",
+            photoID: photo.id,
+            crop: PhotoCrop(scale: 1, offsetX: 100, offsetY: 100)
+        )
+
+        let card = try await service.create(PostcardCreationInput(
+            title: "Bounded",
+            photos: [photo],
+            template: template,
+            assignments: [assignment],
+            backText: "bounded crop",
+            backFontId: nil,
+            backTextColorHex: "#111111",
+            stampAssetID: "golden-flower",
+            locationLabel: nil,
+            unlockDate: now.addingTimeInterval(86_400)
+        ))
+
+        let storedCrop = try #require(card.slotAssignments.first?.crop)
+        let expected = assignment.crop.constrained(
+            sourceAspect: photo.aspect,
+            targetAspect: template.slots[0].renderedAspect()
+        )
+        #expect(storedCrop == expected)
     }
 }
 

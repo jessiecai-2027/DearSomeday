@@ -1122,7 +1122,10 @@ struct ComposerView: View {
             let index = assignments.firstIndex(where: { $0.slotID == slotID })
         else { return }
         let photoID = assignments[index].photoID
-        assignments[index].crop = .centred(source: photoAspectsByID[photoID] ?? 1, target: slot.aspect)
+        assignments[index].crop = .centred(
+            source: photoAspectsByID[photoID] ?? 1,
+            target: slot.renderedAspect()
+        )
     }
 
     // MARK: - Seal
@@ -1389,11 +1392,12 @@ private struct TemplateCanvasView: View {
 
     private func slotView(_ slot: TemplateSlot, in size: CGSize) -> some View {
         let slotSize = CGSize(width: CGFloat(slot.width) * size.width, height: CGFloat(slot.height) * size.height)
+        let targetAspect = renderedAspect(of: slotSize)
         let assignment = assignments.first { $0.slotID == slot.id }
         let photo = assignment.flatMap { assignment in photos.first { $0.id == assignment.photoID } }
         let crop = (assignment?.crop ?? .centered).constrained(
-            sourceAspect: photo?.aspect ?? slot.aspect,
-            targetAspect: slot.aspect
+            sourceAspect: photo?.aspect ?? targetAspect,
+            targetAspect: targetAspect
         )
 
         return ZStack {
@@ -1419,7 +1423,7 @@ private struct TemplateCanvasView: View {
             }
         )
         .gesture(dragGesture(for: slot, slotSize: slotSize))
-        .simultaneousGesture(magnifyGesture(for: slot))
+        .simultaneousGesture(magnifyGesture(for: slot, slotSize: slotSize))
         // Keep the gesture-bearing view at the slot's actual size. Attaching
         // gestures after `position` makes every positioned child participate
         // in the full canvas layout region, so the last slot wins hit testing.
@@ -1444,7 +1448,11 @@ private struct TemplateCanvasView: View {
                     offsetX: start.offsetX + Double(value.translation.width / max(slotSize.width, 1)),
                     offsetY: start.offsetY + Double(value.translation.height / max(slotSize.height, 1))
                 )
-                assignments[index].crop = constrainedCrop(proposedCrop, for: slot, assignmentIndex: index)
+                assignments[index].crop = constrainedCrop(
+                    proposedCrop,
+                    targetAspect: renderedAspect(of: slotSize),
+                    assignmentIndex: index
+                )
             }
             .onEnded { _ in
                 dragStartCrop = nil
@@ -1452,7 +1460,7 @@ private struct TemplateCanvasView: View {
             }
     }
 
-    private func magnifyGesture(for slot: TemplateSlot) -> some Gesture {
+    private func magnifyGesture(for slot: TemplateSlot, slotSize: CGSize) -> some Gesture {
         MagnificationGesture()
             .onChanged { value in
                 selectSlot(slot.id)
@@ -1464,7 +1472,11 @@ private struct TemplateCanvasView: View {
                 let start = magnifyStartScale ?? assignments[index].crop.scale
                 var proposedCrop = assignments[index].crop
                 proposedCrop.scale = start * Double(value)
-                assignments[index].crop = constrainedCrop(proposedCrop, for: slot, assignmentIndex: index)
+                assignments[index].crop = constrainedCrop(
+                    proposedCrop,
+                    targetAspect: renderedAspect(of: slotSize),
+                    assignmentIndex: index
+                )
             }
             .onEnded { _ in
                 magnifyStartScale = nil
@@ -1474,12 +1486,17 @@ private struct TemplateCanvasView: View {
 
     private func constrainedCrop(
         _ crop: PhotoCrop,
-        for slot: TemplateSlot,
+        targetAspect: CGFloat,
         assignmentIndex: Int
     ) -> PhotoCrop {
         let photoID = assignments[assignmentIndex].photoID
-        let sourceAspect = photos.first(where: { $0.id == photoID })?.aspect ?? slot.aspect
-        return crop.constrained(sourceAspect: sourceAspect, targetAspect: slot.aspect)
+        let sourceAspect = photos.first(where: { $0.id == photoID })?.aspect ?? targetAspect
+        return crop.constrained(sourceAspect: sourceAspect, targetAspect: targetAspect)
+    }
+
+    private func renderedAspect(of size: CGSize) -> CGFloat {
+        guard size.height > 0 else { return 1 }
+        return size.width / size.height
     }
 
     private func selectSlot(_ slotID: String) {

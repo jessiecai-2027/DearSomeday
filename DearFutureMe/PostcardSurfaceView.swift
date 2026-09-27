@@ -124,14 +124,15 @@ struct PostcardFrontView: View {
             width: CGFloat(slot.width) * size.width,
             height: CGFloat(slot.height) * size.height
         )
+        let targetAspect = slotSize.height > 0 ? slotSize.width / slotSize.height : 1
         let assignment = assignmentsBySlot[slot.id]
         let image = image(for: assignment)
         let imageAspect = image.map { image in
-            image.size.height > 0 ? image.size.width / image.size.height : slot.aspect
-        } ?? slot.aspect
+            image.size.height > 0 ? image.size.width / image.size.height : targetAspect
+        } ?? targetAspect
         let crop = (assignment?.crop ?? .centered).constrained(
             sourceAspect: imageAspect,
-            targetAspect: slot.aspect
+            targetAspect: targetAspect
         )
 
         return ZStack {
