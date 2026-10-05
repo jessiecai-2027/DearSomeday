@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#faf3e7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1a1512" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Privacy Policy for Dear Someday, effective September 22, 2026 and last updated October 4, 2026.">
+  <title>Privacy Policy · Dear Someday</title>
+  <style id="legacy-styles" media="not all">
+    :root {
+      color-scheme: light dark;
+      --background: #faf3e7;
+      --surface: #fffdf9;
+      --surface-soft: #f3e4c9;
+      --ink: #2b241e;
+      --muted: #66594f;
+      --accent: #765a47;
+      --accent-soft: #bfa28c;
+      --sage: #babf94;
+      --border: #dfcfb8;
+      --shadow: 0 1.25rem 3.5rem rgb(43 36 30 / 10%);
+      --focus: #805c3f;
+      --content-width: 74rem;
+      --reading-width: 46rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #1a1512;
+        --surface: #241d19;
+        --surface-soft: #302720;
+        --ink: #f6ead6;
+        --muted: #d0bfac;
+        --accent: #e0c1a8;
+        --accent-soft: #7e6655;
+        --sage: #7e8564;
+        --border: #4a3b31;
+        --shadow: 0 1.25rem 3.5rem rgb(0 0 0 / 24%);
+        --focus: #f1c7a3;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 1.5rem;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 8% 4%, rgb(186 191 148 / 22%), transparent 24rem),
+        var(--background);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(1rem, 0.96rem + 0.18vw, 1.125rem);
+      line-height: 1.72;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.18em;
+    }
+
+    a:hover { text-decoration-thickness: 0.14em; }
+
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 0.2rem solid var(--focus);
+      outline-offset: 0.2rem;
+      border-radius: 0.15rem;
+    }
+
+    .skip-link {
+      position: fixed;
+      z-index: 10;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.4rem;
+      background: var(--ink);
+      color: var(--surface);
+      transform: translateY(-180%);
+      transition: transform 160ms ease;
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .site-header {
+      width: min(calc(100% - 2rem), var(--content-width));
+      margin: clamp(1rem, 4vw, 3.5rem) auto 0;
+      padding: clamp(1.5rem, 5vw, 4.5rem);
+      overflow: hidden;
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .site-header::after {
+      content: "";
+      position: absolute;
+      width: 11rem;
+      height: 11rem;
+      right: -3.5rem;
+      top: -3.5rem;
+      border: 1px dashed var(--accent-soft);
+      border-radius: 50%;
+      opacity: 0.55;
+      transform: rotate(8deg);
+    }
+
+    .eyebrow {
+      margin: 0 0 0.6rem;
+      color: var(--accent);
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 750;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    h1, h2 {
+      line-height: 1.16;
+      text-wrap: balance;
+    }
+
+    h1 {
+      max-width: 13ch;
+      margin: 0;
+      font-size: clamp(2.5rem, 8vw, 5.5rem);
+      font-weight: 500;
+      letter-spacing: -0.045em;
+    }
+
+    .intro {
+      max-width: 46rem;
+      margin: 1.3rem 0 0;
+      color: var(--muted);
+      font-size: clamp(1.08rem, 1rem + 0.45vw, 1.4rem);
+      line-height: 1.55;
+    }
+
+    .dates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.4rem;
+      margin: 1.5rem 0 0;
+      color: var(--muted);
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.85rem;
+    }
+
+    .dates strong { color: var(--ink); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(12rem, 16rem) minmax(0, var(--reading-width));
+      justify-content: center;
+      align-items: start;
+      gap: clamp(2rem, 5vw, 5rem);
+      width: min(calc(100% - 2rem), var(--content-width));
+      margin: clamp(2rem, 5vw, 4rem) auto 5rem;
+    }
+
+    .contents {
+      position: sticky;
+      top: 1.5rem;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .contents h2 {
+      margin: 0 0 0.8rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .contents ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border-left: 1px solid var(--border);
+    }
+
+    .contents a {
+      display: block;
+      padding: 0.38rem 0.8rem;
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .contents a:hover {
+      color: var(--ink);
+      background: var(--surface-soft);
+    }
+
+    main { min-width: 0; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: clamp(2.5rem, 7vw, 5rem);
+    }
+
+    .summary div {
+      min-width: 0;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.65rem;
+      background: var(--surface-soft);
+    }
+
+    .summary strong,
+    .summary span { display: block; }
+
+    .summary strong {
+      margin-bottom: 0.15rem;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.88rem;
+    }
+
+    .summary span {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    section {
+      padding-top: 0.35rem;
+      margin-bottom: clamp(2.5rem, 7vw, 4.75rem);
+    }
+
+    section + section {
+      padding-top: clamp(2.5rem, 7vw, 4.75rem);
+      border-top: 1px solid var(--border);
+    }
+
+    h2 {
+      margin: 0 0 1.15rem;
+      font-size: clamp(1.65rem, 1.35rem + 1vw, 2.25rem);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    p { margin: 0 0 1.1rem; }
+    p:last-child { margin-bottom: 0; }
+
+    ul {
+      margin: 1.1rem 0;
+      padding-left: 1.25rem;
+    }
+
+    li { padding-left: 0.35rem; }
+    li + li { margin-top: 0.45rem; }
+    li::marker { color: var(--accent); }
+
+    code {
+      padding: 0.12em 0.35em;
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      background: var(--surface-soft);
+      font-size: 0.88em;
+      overflow-wrap: anywhere;
+    }
+
+    .contact-card {
+      padding: clamp(1.25rem, 4vw, 2rem);
+      border-left: 0.3rem solid var(--sage);
+      background: var(--surface-soft);
+    }
+
+    .contact-card address {
+      font-style: normal;
+    }
+
+    footer {
+      width: min(calc(100% - 2rem), var(--reading-width));
+      margin: -2rem auto 3rem;
+      color: var(--muted);
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    @media (max-width: 52rem) {
+      .layout { display: block; }
+
+      .contents {
+        position: static;
+        margin-bottom: 2.5rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 0.65rem;
+        background: var(--surface);
+      }
+
+      .contents summary {
+        cursor: pointer;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .contents h2 { display: none; }
+      .contents ol { margin-top: 0.75rem; }
+    }
+
+    @media (min-width: 52.001rem) {
+      .contents summary { display: none; }
+      .contents details > * { display: block; }
+    }
+
+    @media (max-width: 35rem) {
+      .site-header,
+      .layout { width: min(calc(100% - 1.25rem), var(--content-width)); }
+
+      .site-header { padding: 1.5rem 1.25rem 1.8rem; }
+      .site-header::after { width: 7rem; height: 7rem; }
+      .summary { grid-template-columns: 1fr; }
+      .dates { display: block; }
+      .dates span { display: block; }
+      .dates span + span { margin-top: 0.25rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    }
+
+    @media print {
+      :root {
+        --background: #fff;
+        --surface: #fff;
+        --surface-soft: #f7f2ea;
+        --ink: #000;
+        --muted: #333;
+        --border: #bbb;
+      }
+
+      body { font-size: 10.5pt; background: #fff; }
+      .skip-link, .contents { display: none; }
+      .site-header { margin-top: 0; padding: 0 0 1rem; border: 0; box-shadow: none; }
+      .site-header::after { display: none; }
+      h1 { font-size: 32pt; }
+      .layout { display: block; width: 100%; margin: 1.5rem 0; }
+      main { max-width: none; }
+      .summary { break-inside: avoid; }
+      section { break-inside: auto; margin-bottom: 1.5rem; }
+      section + section { padding-top: 1.5rem; }
+      h2 { break-after: avoid; font-size: 17pt; }
+      p, li { orphans: 3; widows: 3; }
+      footer { width: 100%; margin: 1rem 0 0; }
+      a { color: inherit; }
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; }
+      a[href^="mailto"]::after { content: none; }
+    }
+  </style>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 1rem;
+    }
+
+    body {
+      margin: 0;
+      background: #fff;
+      color: #000;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 1rem;
+      line-height: 1.65;
+    }
+
+    a {
+      color: #000;
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
+    }
+
+    a:focus-visible,
+    select:focus-visible {
+      outline: 3px solid #000;
+      outline-offset: 3px;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding: 0.65rem;
+      background: #000;
+      color: #fff;
+      transform: translateY(-110%);
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    .site-header,
+    .layout,
+    footer {
+      width: min(100% - 2rem, 46rem);
+      margin-inline: auto;
+    }
+
+    .site-header {
+      padding: 3.5rem 0 2rem;
+      border-bottom: 2px solid #000;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.25rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2 {
+      line-height: 1.2;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 3.5rem);
+    }
+
+    .intro {
+      max-width: 40rem;
+      margin: 1rem 0 0;
+      font-size: 1.1rem;
+    }
+
+    .dates {
+      margin: 1.25rem 0 0;
+      font-size: 0.9rem;
+    }
+
+    .dates span {
+      display: inline-block;
+      margin-right: 1.25rem;
+    }
+
+    .layout {
+      margin-top: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .contents {
+      margin-bottom: 3rem;
+    }
+
+    .contents label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .contents select {
+      width: min(100%, 25rem);
+      min-height: 2.75rem;
+      padding: 0.5rem 2rem 0.5rem 0.65rem;
+      border: 1px solid #000;
+      border-radius: 0;
+      background: #fff;
+      color: #000;
+      font: inherit;
+    }
+
+    section {
+      padding-top: 0.25rem;
+      margin-bottom: 3rem;
+    }
+
+    section + section {
+      padding-top: 2.5rem;
+      border-top: 1px solid #000;
+    }
+
+    h2 {
+      margin: 0 0 1rem;
+      font-size: clamp(1.45rem, 5vw, 2rem);
+    }
+
+    p {
+      margin: 0 0 1rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul {
+      margin: 1rem 0;
+      padding-left: 1.4rem;
+    }
+
+    li + li {
+      margin-top: 0.4rem;
+    }
+
+    code {
+      font-family: monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .contact-card address {
+      font-style: normal;
+    }
+
+    footer {
+      padding: 1.5rem 0 2.5rem;
+      border-top: 1px solid #000;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 32rem) {
+      .site-header {
+        padding-top: 2.25rem;
+      }
+
+      .dates span {
+        display: block;
+        margin: 0.2rem 0 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+
+    @media print {
+      .skip-link,
+      .contents {
+        display: none;
+      }
+
+      body {
+        font-size: 10.5pt;
+      }
+
+      .site-header,
+      .layout,
+      footer {
+        width: 100%;
+      }
+
+      .site-header {
+        padding-top: 0;
+      }
+
+      section {
+        break-inside: auto;
+      }
+
+      h2 {
+        break-after: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#policy">Skip to privacy policy</a>
+
+  <header class="site-header">
+    <p class="eyebrow">Dear Someday</p>
+    <h1>Privacy Policy</h1>
+    <p class="intro">Dear Someday keeps your postcards on your device. This policy explains what the app uses, what may be sent to Apple, and what you can control.</p>
+    <p class="dates">
+      <span><strong>Effective:</strong> <time datetime="2026-09-22">September 22, 2026</time></span>
+      <span><strong>Last updated:</strong> <time datetime="2026-10-04">October 4, 2026</time></span>
+    </p>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Privacy policy sections">
+      <label for="section-jump">Jump to a section</label>
+      <select id="section-jump" onchange="if (this.value) location.hash = this.value">
+        <option value="">Choose a section…</option>
+        <option value="overview-title">Overview</option>
+        <option value="information-you-create">What you put in a postcard</option>
+        <option value="photos">Photos</option>
+        <option value="location">Location</option>
+        <option value="notifications">Notifications</option>
+        <option value="trusted-time">Time checks</option>
+        <option value="local-storage">Storage and backups</option>
+        <option value="not-collected">What we do not collect</option>
+        <option value="sharing">When information leaves your device</option>
+        <option value="retention">Deleting your data</option>
+        <option value="your-choices">Your choices</option>
+        <option value="children">Children</option>
+        <option value="security">Security</option>
+        <option value="changes">Policy changes</option>
+        <option value="contact">Contact and support</option>
+      </select>
+    </nav>
+
+    <main id="policy">
+      <section aria-labelledby="overview-title">
+        <h2 id="overview-title">Overview</h2>
+        <p><strong>The short version:</strong> Your postcards are stored on your device. You do not need an account. The developer does not receive your postcards, photos, location, or other personal content.</p>
+        <p>Dear Someday has no ads, analytics, tracking tools, or third-party marketing software. A small amount of information may go to Apple when you choose to use location, when the app checks the correct time, or when your device creates a backup. Those cases are explained below.</p>
+      </section>
+
+      <section id="information-you-create" aria-labelledby="information-you-create-title">
+        <h2 id="information-you-create-title">What You Put in a Postcard</h2>
+        <p>A postcard can include:</p>
+        <ul>
+          <li>photos you choose;</li>
+          <li>a title and message;</li>
+          <li>an optional place name;</li>
+          <li>design choices, such as the template, photo crop, font, colors, and decorations; and</li>
+          <li>dates, including when you created, edited, or can unlock the postcard.</li>
+        </ul>
+        <p>The app uses this information only to create, show, lock, unlock, organize, and delete postcards on your device.</p>
+      </section>
+
+      <section id="photos" aria-labelledby="photos-title">
+        <h2 id="photos-title">Photos</h2>
+        <p>You choose photos with Apple’s photo picker. Dear Someday can access only the photos you select; it does not ask for full access to your photo library.</p>
+        <p>The app makes a smaller JPEG copy for the postcard. It fixes the photo’s orientation, limits its longest side to 2,048 pixels, and saves the copy in the app’s private storage. The app does not keep another full-size copy. It also does not save the temporary identifiers used to prevent duplicate selections.</p>
+        <p>Your selected photos are not sent to the developer.</p>
+      </section>
+
+      <section id="location" aria-labelledby="location-title">
+        <h2 id="location-title">Location</h2>
+        <p>Adding a place is optional. You can type a place name without sharing your location.</p>
+        <p>If you choose <strong>Use Current Location</strong>, the app asks for location access while you are using it. It requests your location once, at about 100-meter accuracy, and sends it to Apple’s MapKit service to find a readable place name. If MapKit cannot find one, the app may use rounded coordinates. The place name is then saved with the postcard on your device.</p>
+        <p>Dear Someday does not track your location in the background, and the developer does not receive it. Apple handles the MapKit request under <a href="https://www.apple.com/legal/privacy/" rel="external">Apple’s Privacy Policy</a>.</p>
+        <p>You can say no and keep using the app. To turn off access later, go to <strong>iOS Settings → Privacy &amp; Security → Location Services</strong>. Turning off access stops future lookups. It does not remove place names already saved in postcards; delete the postcard to remove one.</p>
+      </section>
+
+      <section id="notifications" aria-labelledby="notifications-title">
+        <h2 id="notifications-title">Notifications</h2>
+        <p>After you create your first locked postcard, the app may ask to send notifications. If you agree, your device schedules a notification for the time each postcard unlocks.</p>
+        <p>A notification may show the postcard title and “It’s ready to open.” It does not show the postcard message or photos.</p>
+        <p>You can turn notifications off in <strong>iOS Settings → Notifications</strong>. This does not delete your postcards.</p>
+      </section>
+
+      <section id="trusted-time" aria-labelledby="trusted-time-title">
+        <h2 id="trusted-time-title">Time Checks</h2>
+        <p>The app checks the correct time so that changing your device clock cannot unlock a postcard early. It does this with a small, encrypted HTTPS request to <code>www.apple.com</code>. The app reads only the date and time in Apple’s response.</p>
+        <p>This request does not include postcard content, photos, place names, or an account ID. Like any internet request, it may give Apple technical information such as your IP address. Apple handles that information under <a href="https://www.apple.com/legal/privacy/" rel="external">Apple’s Privacy Policy</a>. The developer does not receive the request.</p>
+        <p>The app saves a small time reference and device-uptime value on your device so it can use the check.</p>
+      </section>
+
+      <section id="local-storage" aria-labelledby="local-storage-title">
+        <h2 id="local-storage-title">Storage and Backups</h2>
+        <p>Your postcards, processed photo copies, design settings, and app preferences are stored in Dear Someday’s private storage on your device.</p>
+        <p>If you use iCloud Backup or an encrypted computer backup, Apple may include the app’s local data in that backup. You and Apple control those backups—not the Dear Someday developer. See <a href="https://www.apple.com/legal/privacy/" rel="external">Apple’s Privacy Policy</a> for information about Apple’s handling of backup data.</p>
+        <p>Dear Someday does not have its own cloud account or sync service.</p>
+      </section>
+
+      <section id="not-collected" aria-labelledby="not-collected-title">
+        <h2 id="not-collected-title">What We Do Not Collect</h2>
+        <p>The developer does not collect or receive:</p>
+        <ul>
+          <li>your name, email address, phone number, or account details;</li>
+          <li>your postcard text, photos, place names, or precise location;</li>
+          <li>advertising IDs or cross-app tracking data;</li>
+          <li>analytics or advertising data;</li>
+          <li>contacts, calendars, microphone recordings, health data, or financial data; or</li>
+          <li>crash reports from an added analytics or crash-reporting service.</li>
+        </ul>
+        <p>Dear Someday does not sell personal information or use information for ads or tracking.</p>
+        <p>Apple separately provides the App Store, iOS permissions, MapKit, notifications, and device backups. Apple’s own privacy terms and settings apply to those services.</p>
+      </section>
+
+      <section id="sharing" aria-labelledby="sharing-title">
+        <h2 id="sharing-title">When Information Leaves Your Device</h2>
+        <p>The developer does not share your postcard content with advertisers, data brokers, analytics companies, or other third parties because the developer never receives it.</p>
+        <p>Information may go to Apple when:</p>
+        <ul>
+          <li>you ask the app to turn your location into a place name;</li>
+          <li>the app checks the correct time; or</li>
+          <li>you use an Apple service such as iCloud Backup.</li>
+        </ul>
+        <p>The developer may provide information if legally required. Because postcard content is not sent to the developer, the developer normally has no postcard content to provide.</p>
+      </section>
+
+      <section id="retention" aria-labelledby="retention-title">
+        <h2 id="retention-title">Deleting Your Data</h2>
+        <p>Postcards and their photo copies stay on your device until you delete them or delete the app.</p>
+        <p>Deleting a postcard removes its local record and photo files. You cannot undo this in the app. Deleting the app removes all of its local data from that device.</p>
+        <p>An older copy may remain in an iCloud or computer backup until you delete that backup or it expires. You can manage iCloud backups in your Apple Account settings.</p>
+        <p>There is no separate account to delete. The developer cannot remotely view or delete information on your device or in your Apple backups.</p>
+      </section>
+
+      <section id="your-choices" aria-labelledby="your-choices-title">
+        <h2 id="your-choices-title">Your Choices</h2>
+        <p>You can:</p>
+        <ul>
+          <li>decline location permission and type a place label instead;</li>
+          <li>revoke location permission in iOS Settings;</li>
+          <li>decline or disable notifications in iOS Settings;</li>
+          <li>delete individual postcards in the app; and</li>
+          <li>delete the app and manage device backups through your Apple settings.</li>
+        </ul>
+      </section>
+
+      <section id="children" aria-labelledby="children-title">
+        <h2 id="children-title">Children</h2>
+        <p>Dear Someday is not designed to collect children’s personal information, and the developer does not knowingly collect it. A parent or guardian can remove postcard content by deleting the postcard or the app.</p>
+      </section>
+
+      <section id="security" aria-labelledby="security-title">
+        <h2 id="security-title">Security</h2>
+        <p>Dear Someday uses iOS app protections for information stored on your device and for network connections. No storage or transmission method is completely secure. Your device passcode, backup settings, Apple Account security, and notification-preview settings also affect how well your information is protected.</p>
+      </section>
+
+      <section id="changes" aria-labelledby="changes-title">
+        <h2 id="changes-title">Changes to This Policy</h2>
+        <p>We may update this policy if the app or its data practices change. The date at the top will show when it was last updated. If a change significantly affects how the app handles personal information, we will provide notice when required by law or Apple’s rules.</p>
+      </section>
+
+      <section id="contact" aria-labelledby="contact-title">
+        <h2 id="contact-title">Contact and Support</h2>
+        <div class="contact-card">
+          <p>Need help with Dear Someday or have questions about this policy or the app’s privacy practices?</p>
+          <address>
+            <strong>Dear Someday Support</strong><br>
+            <a href="mailto:dearsomeday.support@gmail.com">dearsomeday.support@gmail.com</a>
+          </address>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Privacy Policy for Dear Someday · Last updated <time datetime="2026-10-04">October 4, 2026</time></p>
+  </footer>
+</body>
+</html>

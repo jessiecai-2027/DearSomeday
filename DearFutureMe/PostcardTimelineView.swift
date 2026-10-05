@@ -13,6 +13,9 @@ struct PostcardTimelineView: View {
 
     let services: AppServices
 
+    private static let privacyPolicyURL = URL(string: "https://dearsomeday.netlify.app/")!
+    private static let supportEmailURL = URL(string: "mailto:dearsomeday.support@gmail.com")!
+
     /// §5.5 batch size.
     private static let pageSize = 50
     /// Keep due cards current while the mailbox remains onscreen. This pass
@@ -218,41 +221,17 @@ struct PostcardTimelineView: View {
                     .font(Tokens.Font.screenTitle)
                     .foregroundStyle(Tokens.Color.inkEspresso)
                     .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
                     .timelineForegroundShadow()
 
                 Spacer(minLength: Tokens.Space.xs)
 
-                /*
-                #if DEBUG
-                // Debug utilities retained here for future development builds.
-                Menu {
-                    Button("Sweep") { Task { await sweepAndReload() } }
-                    Button("Seed 20s") { Task { await seedDebugCard() } }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .frame(width: 28, height: 28)
-                }
-                .accessibilityLabel("Debug tools")
-                #endif
-                */
-
-                Button { presentSearch() } label: {
-                    Image(systemName: "magnifyingglass")
-                        .frame(width: 28, height: 28)
-                        .timelineForegroundShadow()
-                }
-                .accessibilityLabel("Search postcards")
-                .accessibilityAddTraits(isSearchPresented ? .isSelected : [])
-
-                Button { showComposer = true } label: {
-                    Image(systemName: "plus")
-                        .frame(width: 28, height: 28)
-                        .timelineForegroundShadow()
-                }
-                .accessibilityLabel("New postcard")
-
-                filterControl
+                headerActions
             }
+
+            filterControl
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if isSearchPresented {
                 searchField
@@ -280,6 +259,46 @@ struct PostcardTimelineView: View {
             }
             .ignoresSafeArea(edges: .top)
         }
+    }
+
+    private var headerActions: some View {
+        HStack(spacing: 0) {
+            Button { presentSearch() } label: {
+                Image(systemName: "magnifyingglass")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Search postcards")
+            .accessibilityAddTraits(isSearchPresented ? .isSelected : [])
+
+            Button { showComposer = true } label: {
+                Image(systemName: "plus")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("New postcard")
+
+            Menu {
+                Link(destination: Self.privacyPolicyURL) {
+                    Label("Privacy Policy", systemImage: "hand.raised")
+                }
+
+                Link(destination: Self.supportEmailURL) {
+                    Label("Contact Support", systemImage: "envelope")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("More options")
+        }
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(Tokens.Color.inkEspresso)
+        .buttonStyle(.plain)
+        .background(.thinMaterial, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(Tokens.Color.chromeDivider.opacity(0.7), lineWidth: 0.5)
+        }
+        .timelineForegroundShadow()
     }
 
     private var searchField: some View {
@@ -349,9 +368,10 @@ struct PostcardTimelineView: View {
                         timelineFilter = filter
                     }
                 } label: {
-                    Image(systemName: filter.symbolName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 34, height: 28)
+                    Label(filter.title, systemImage: filter.symbolName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .labelStyle(.titleAndIcon)
+                        .frame(maxWidth: .infinity, minHeight: 32)
                         .foregroundStyle(
                             timelineFilter == filter
                                 ? Tokens.Color.inkEspresso
@@ -369,6 +389,7 @@ struct PostcardTimelineView: View {
             }
         }
         .padding(3)
+        .frame(maxWidth: .infinity)
         .background(.thinMaterial, in: Capsule())
         .overlay {
             Capsule().stroke(Tokens.Color.chromeDivider.opacity(0.7), lineWidth: 0.5)

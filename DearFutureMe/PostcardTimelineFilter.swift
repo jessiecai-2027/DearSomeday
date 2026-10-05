@@ -31,6 +31,14 @@ enum PostcardTimelineFilter: String, CaseIterable, Identifiable {
         }
     }
 
+    var title: String {
+        switch self {
+        case .all: "All"
+        case .sealed: "Sealed"
+        case .delivered: "Delivered"
+        }
+    }
+
     var accessibilityLabel: String {
         switch self {
         case .all: "All postcards"
