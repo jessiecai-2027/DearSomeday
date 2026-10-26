@@ -284,13 +284,31 @@ struct ComposerView: View {
 
     private var selectedPhotoGrid: some View {
         LazyVGrid(columns: selectedPhotoColumns, spacing: 12) {
-            ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                photoThumb(photo, selectionNumber: index + 1)
+            ForEach(photos) { photo in
+                photoThumb(photo)
                     .aspectRatio(1, contentMode: .fit)
-                    .zIndex(reorderingPhotoID == photo.id ? 1 : 0)
+                    .transaction(value: photos.map(\.id)) { transaction in
+                        if reorderingPhotoID == photo.id {
+                            transaction.animation = nil
+                        }
+                    }
             }
         }
         .coordinateSpace(name: "selectedPhotoGrid")
+        .overlay {
+            GeometryReader { proxy in
+                if
+                    let photoID = reorderingPhotoID,
+                    let photo = photos.first(where: { $0.id == photoID }),
+                    let index = photos.firstIndex(where: { $0.id == photoID })
+                {
+                    let side = (proxy.size.width - 24) / 3
+                    floatingPhoto(photo, side: side)
+                        .position(floatingPhotoCenter(index: index, itemSide: side))
+                }
+            }
+            .allowsHitTesting(false)
+        }
     }
 
     private var selectedPhotoColumns: [GridItem] {
@@ -349,7 +367,7 @@ struct ComposerView: View {
         .disabled(isImportingPhotos)
     }
 
-    private func photoThumb(_ photo: CreationPhoto, selectionNumber: Int) -> some View {
+    private func photoThumb(_ photo: CreationPhoto) -> some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
             let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -370,15 +388,6 @@ struct ComposerView: View {
                 shape
                     .stroke(.white, lineWidth: 2)
 
-                Text("\(selectionNumber)")
-                    .font(Tokens.Font.caption.weight(.bold))
-                    .foregroundStyle(Tokens.Color.chromeText)
-                    .frame(width: 24, height: 24)
-                    .background(Circle().fill(.blue))
-                    .shadow(radius: 2, y: 1)
-                    .padding(6)
-                    .frame(width: side, height: side, alignment: .topLeading)
-
                 Button {
                     beginRemoving(photo)
                 } label: {
@@ -397,21 +406,46 @@ struct ComposerView: View {
             .frame(width: side, height: side)
             .background(Color(.secondarySystemBackground))
             .clipShape(shape)
-            .scaleEffect(reorderingPhotoID == photo.id ? 1.06 : 1)
-            .offset(reorderOffset(for: photo, selectionNumber: selectionNumber, side: side))
-            .shadow(
-                color: .black.opacity(reorderingPhotoID == photo.id ? 0.22 : 0),
-                radius: 10,
-                y: 5
-            )
             .scaleEffect(deletingPhotoIDs.contains(photo.id) ? 0.01 : 1)
-            .opacity(deletingPhotoIDs.contains(photo.id) ? 0 : 1)
-            .onLongPressGesture(minimumDuration: 1.2, maximumDistance: 20) {
+            .opacity(
+                deletingPhotoIDs.contains(photo.id) || reorderingPhotoID == photo.id ? 0 : 1
+            )
+            .onLongPressGesture(minimumDuration: 1, maximumDistance: 20) {
                 beginReordering(photo)
             }
             .simultaneousGesture(reorderDragGesture(for: photo, side: side))
         }
         .aspectRatio(1, contentMode: .fit)
+    }
+
+    private func floatingPhoto(_ photo: CreationPhoto, side: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+
+        return Group {
+            if let image = photo.thumbnail {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Rectangle().fill(.gray.opacity(0.3))
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(shape)
+        .overlay(shape.stroke(.white, lineWidth: 2))
+        .scaleEffect(1.08)
+        .shadow(color: .black.opacity(0.28), radius: 12, y: 7)
+    }
+
+    private func floatingPhotoCenter(index: Int, itemSide: CGFloat) -> CGPoint {
+        let gridCenter = photoGridCenter(for: index, itemSide: itemSide)
+        guard let location = reorderLocation, let touchOffset = reorderTouchOffset else {
+            return gridCenter
+        }
+        return CGPoint(
+            x: location.x - touchOffset.width,
+            y: location.y - touchOffset.height
+        )
     }
 
     private func reorderDragGesture(
@@ -434,7 +468,13 @@ struct ComposerView: View {
 
     private func beginReordering(_ photo: CreationPhoto) {
         guard reorderingPhotoID == nil else { return }
-        reorderingPhotoID = photo.id
+        if accessibilityReduceMotion {
+            reorderingPhotoID = photo.id
+        } else {
+            withAnimation(.easeOut(duration: 0.16)) {
+                reorderingPhotoID = photo.id
+            }
+        }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
@@ -469,28 +509,10 @@ struct ComposerView: View {
         if accessibilityReduceMotion {
             updateOrder()
         } else {
-            withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.86)) {
+            withAnimation(.easeInOut(duration: 0.16)) {
                 updateOrder()
             }
         }
-    }
-
-    private func reorderOffset(
-        for photo: CreationPhoto,
-        selectionNumber: Int,
-        side: CGFloat
-    ) -> CGSize {
-        guard
-            reorderingPhotoID == photo.id,
-            let location = reorderLocation,
-            let touchOffset = reorderTouchOffset
-        else { return .zero }
-
-        let currentCenter = photoGridCenter(for: selectionNumber - 1, itemSide: side)
-        return CGSize(
-            width: location.x - touchOffset.width - currentCenter.x,
-            height: location.y - touchOffset.height - currentCenter.y
-        )
     }
 
     private func photoGridCenter(for index: Int, itemSide: CGFloat) -> CGPoint {
@@ -510,7 +532,7 @@ struct ComposerView: View {
         if accessibilityReduceMotion {
             clearReorderState()
         } else {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+            withAnimation(.easeOut(duration: 0.16)) {
                 clearReorderState()
             }
         }
