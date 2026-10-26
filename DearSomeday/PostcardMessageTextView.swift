@@ -5,9 +5,10 @@ import UIKit
 enum PostcardMessageLayout {
     static func configure(_ container: NSTextContainer, for canvasSize: CGSize) {
         let edgePadding = canvasSize.width * 0.07
+        let bottomClearance = canvasSize.width * 0.025
         container.size = CGSize(
             width: max(canvasSize.width - edgePadding * 2, 0),
-            height: max(canvasSize.height - edgePadding * 2, 0)
+            height: max(canvasSize.height - edgePadding * 2 - bottomClearance, 0)
         )
         container.lineFragmentPadding = 0
         container.lineBreakMode = .byCharWrapping
@@ -168,8 +169,11 @@ struct PostcardMessageTextView: UIViewRepresentable {
         context.coordinator.parent = self
         let selection = textView.selectedRange
         let wasAtEnd = NSMaxRange(selection) == (textView.text as NSString).length
+        let textChanged = textView.text != text
+        let fontChanged = textView.font?.fontName != font.fontName
+            || textView.font?.pointSize != font.pointSize
 
-        if textView.text != text {
+        if textChanged {
             textView.text = text
         }
 
@@ -181,17 +185,21 @@ struct PostcardMessageTextView: UIViewRepresentable {
         textView.isUserInteractionEnabled = isEditable
         textView.setNeedsLayout()
         textView.layoutIfNeeded()
-        let textLength = (text as NSString).length
-        if wasAtEnd {
-            textView.selectedRange = NSRange(location: textLength, length: 0)
-        } else {
-            let location = min(selection.location, textLength)
-            textView.selectedRange = NSRange(
-                location: location,
-                length: min(selection.length, textLength - location)
-            )
+        if (textChanged || fontChanged), textView.markedTextRange == nil {
+            let textLength = (text as NSString).length
+            if wasAtEnd {
+                textView.selectedRange = NSRange(location: textLength, length: 0)
+            } else {
+                let location = min(selection.location, textLength)
+                textView.selectedRange = NSRange(
+                    location: location,
+                    length: min(selection.length, textLength - location)
+                )
+            }
+            if textView.isFirstResponder {
+                textView.scrollRangeToVisible(textView.selectedRange)
+            }
         }
-        textView.setContentOffset(.zero, animated: false)
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
