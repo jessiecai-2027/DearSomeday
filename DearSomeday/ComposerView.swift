@@ -114,6 +114,8 @@ struct ComposerView: View {
     @State private var hasPlacedStamp = false
     @State private var stampMotion: StampMotion = .settled
     @State private var stampOpacity: Double = 1
+    @State private var flyingStamp: StampOption?
+    @State private var flyingStampFrame: CGRect = .zero
     @State private var stampAnimationTask: Task<Void, Never>?
     @State private var locationLabel = ""
     @StateObject private var currentLocation = CurrentLocationResolver()
@@ -199,6 +201,17 @@ struct ComposerView: View {
         }
         .overlayPreferenceValue(FontPickerAnchorPreferenceKey.self) { anchor in
             fontPickerOverlay(anchor: anchor)
+        }
+        .overlay {
+            GeometryReader { _ in
+                if let flyingStamp {
+                    PostcardPlacedStampImage(option: flyingStamp, size: flyingStampFrame.size)
+                        .position(x: flyingStampFrame.midX, y: flyingStampFrame.midY)
+                        .shadow(color: .black.opacity(0.2), radius: 8, y: 5)
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
         .interactiveDismissDisabled(isSealing)
         .onChange(of: pickerItems) { _, items in
@@ -1132,8 +1145,8 @@ struct ComposerView: View {
                             .frame(width: arrowWidth, height: 11)
                             .padding(.leading, arrowX)
 
-                        StampPickerPopover(selectedStampID: selectedStampID) { option in
-                            selectStamp(option)
+                        StampPickerPopover(selectedStampID: selectedStampID) { option, tileFrame in
+                            selectStamp(option, from: tileFrame, to: sourceFrame)
                         }
                         .background(
                             .regularMaterial,
@@ -1168,12 +1181,17 @@ struct ComposerView: View {
         }
     }
 
-    private func selectStamp(_ option: StampOption) {
+    private func selectStamp(_ option: StampOption, from sourceFrame: CGRect, to destination: CGRect) {
         stampAnimationTask?.cancel()
-        selectedStampID = option.id
+        flyingStamp = nil
         stampMotion = .settled
+        withAnimation(.easeOut(duration: 0.16)) {
+            isStampPickerPresented = false
+        }
 
-        if accessibilityReduceMotion {
+        guard !accessibilityReduceMotion, !sourceFrame.isEmpty,
+              !destination.isEmpty else {
+            selectedStampID = option.id
             hasPlacedStamp = true
             stampOpacity = 0
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -1182,17 +1200,25 @@ struct ComposerView: View {
             return
         }
 
-        stampOpacity = 1
+        var initialTransaction = Transaction()
+        initialTransaction.disablesAnimations = true
+        withTransaction(initialTransaction) {
+            flyingStampFrame = sourceFrame
+            flyingStamp = option
+        }
         stampAnimationTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 16_000_000)
+            try? await Task.sleep(nanoseconds: 50_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.16)) {
-                stampMotion = .lifted
+            withAnimation(.easeInOut(duration: 0.45)) {
+                flyingStampFrame = destination
             }
 
-            try? await Task.sleep(nanoseconds: 160_000_000)
+            try? await Task.sleep(nanoseconds: 450_000_000)
             guard !Task.isCancelled else { return }
+            selectedStampID = option.id
             hasPlacedStamp = true
+            stampOpacity = 1
+            flyingStamp = nil
             withAnimation(.easeIn(duration: 0.12)) {
                 stampMotion = .pressed
             }

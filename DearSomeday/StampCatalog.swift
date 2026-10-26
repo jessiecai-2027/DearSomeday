@@ -64,7 +64,7 @@ struct StampPopoverArrow: Shape {
 
 struct StampPickerPopover: View {
     let selectedStampID: String?
-    let onSelect: (StampOption) -> Void
+    let onSelect: (StampOption, CGRect) -> Void
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: Tokens.Space.sm),
@@ -78,8 +78,11 @@ struct StampPickerPopover: View {
 
             LazyVGrid(columns: columns, spacing: Tokens.Space.sm) {
                 ForEach(StampCatalog.all) { option in
+                    GeometryReader { proxy in
                     Button {
-                        onSelect(option)
+                        let frame = proxy.frame(in: .named("composerRoot"))
+                            .insetBy(dx: Tokens.Space.xs, dy: Tokens.Space.xs)
+                        onSelect(option, frame)
                     } label: {
                         ZStack(alignment: .topTrailing) {
                             PostcardStampImage(option: option)
@@ -112,6 +115,8 @@ struct StampPickerPopover: View {
                     .accessibilityLabel(option.accessibilityLabel)
                     .accessibilityValue(selectedStampID == option.id ? "Selected" : "")
                     .accessibilityAddTraits(selectedStampID == option.id ? .isSelected : [])
+                    }
+                    .aspectRatio(1, contentMode: .fit)
                 }
             }
         }
