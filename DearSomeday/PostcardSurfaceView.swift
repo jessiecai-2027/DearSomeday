@@ -14,6 +14,8 @@ struct PostcardSurfaceView: View {
     let photosByID: [UUID: UIImage]
     let photosByOrder: [Int: UIImage]
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     init(card: Postcard, photosByID: [UUID: UIImage], photosByOrder: [Int: UIImage] = [:]) {
         self.card = card
         self.photosByID = photosByID
@@ -29,21 +31,22 @@ struct PostcardSurfaceView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Group {
-                switch side {
-                case .front:
-                    PostcardFrontView(card: card, photosByID: photosByID, photosByOrder: photosByOrder)
-                case .back:
-                    PostcardBackView(card: card)
-                }
+            PostcardFlipView(angle: side == .front ? 0 : 180) {
+                PostcardFrontView(
+                    card: card,
+                    photosByID: photosByID,
+                    photosByOrder: photosByOrder
+                )
+            } back: {
+                PostcardBackView(card: card)
             }
-            .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
-            .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
-            .contentShape(Rectangle())
-            .onTapGesture { toggleSide() }
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(side == .front ? "Postcard front" : "Postcard back")
-            .accessibilityHint("Tap to show the other side")
+                .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
+                .frame(maxWidth: PostcardCanvasMetrics.maxWidth)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleSide() }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel(side == .front ? "Postcard front" : "Postcard back")
+                .accessibilityHint("Tap to show the other side")
 
             Text(side == .front ? "Front" : "Back")
                 .font(Tokens.Font.caption)
@@ -75,9 +78,59 @@ struct PostcardSurfaceView: View {
     }
 
     private func toggleSide() {
-        withAnimation(.snappy(duration: 0.2)) {
+        let updateSide = {
             side = (side == .front) ? .back : .front
         }
+
+        if reduceMotion {
+            updateSide()
+        } else {
+            withAnimation(Tokens.Motion.playful) {
+                updateSide()
+            }
+        }
+    }
+}
+
+/// Renders only the face currently pointing toward the viewer. Swapping the
+/// content at 90 degrees keeps the postcard back upright instead of mirrored.
+private struct PostcardFlipView<Front: View, Back: View>: View, Animatable {
+    var angle: Double
+    let front: Front
+    let back: Back
+
+    init(
+        angle: Double,
+        @ViewBuilder front: () -> Front,
+        @ViewBuilder back: () -> Back
+    ) {
+        self.angle = angle
+        self.front = front()
+        self.back = back()
+    }
+
+    var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    var body: some View {
+        ZStack {
+            if angle <= 90 {
+                front
+            } else {
+                back
+                    .rotation3DEffect(
+                        .degrees(180),
+                        axis: (x: 0, y: 1, z: 0)
+                    )
+            }
+        }
+        .rotation3DEffect(
+            .degrees(angle),
+            axis: (x: 0, y: 1, z: 0),
+            perspective: 0.45
+        )
     }
 }
 
