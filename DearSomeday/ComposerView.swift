@@ -408,85 +408,7 @@ struct ComposerView: View {
                     .foregroundStyle(Tokens.Color.chromeText)
             } else {
                 if let selectedTemplate {
-                    HStack(spacing: Tokens.Space.sm) {
-                        Button {
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                                isTemplatePickerPresented = true
-                            }
-                        } label: {
-                            HStack(spacing: Tokens.Space.sm) {
-                                TemplateLayoutPreview(template: selectedTemplate)
-                                    .frame(width: 28, height: 35)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Template")
-                                        .font(Tokens.Font.caption2)
-                                        .foregroundStyle(.secondary)
-                                    Text(selectedTemplate.name)
-                                        .font(Tokens.Font.subheadline.weight(.semibold))
-                                        .lineLimit(1)
-                                }
-
-                                Spacer(minLength: Tokens.Space.xs)
-
-                                Image(systemName: "chevron.down")
-                                    .font(Tokens.Font.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .foregroundStyle(Tokens.Color.chromeText)
-                            .padding(.horizontal, Tokens.Space.sm)
-                            .padding(.vertical, Tokens.Space.xxs)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
-                                    .fill(Tokens.Color.paperCream.opacity(0.82))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
-                                    .stroke(Tokens.Color.chromeDivider, lineWidth: 1)
-                            )
-                            .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Choose template, " + selectedTemplate.name + " selected")
-                        .accessibilityHint("Opens the template gallery")
-                        .background {
-                            GeometryReader { proxy in
-                                Color.clear.preference(
-                                    key: TemplatePickerAnchorPreferenceKey.self,
-                                    value: proxy.frame(in: .named("composerRoot"))
-                                )
-                            }
-                        }
-
-                        Button {
-                            photoBarriersEnabled.toggle()
-                        } label: {
-                            Image(systemName: "rectangle.split.2x1")
-                                .font(.system(size: 17, weight: .semibold))
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
-                                        .fill(
-                                            photoBarriersEnabled
-                                                ? Color.blue.opacity(0.14)
-                                                : Tokens.Color.paperCream.opacity(0.82)
-                                        )
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
-                                        .stroke(
-                                            photoBarriersEnabled ? Color.blue : Tokens.Color.chromeDivider,
-                                            lineWidth: photoBarriersEnabled ? 2 : 1
-                                        )
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(photoBarriersEnabled ? Color.blue : Tokens.Color.chromeText)
-                        .accessibilityLabel("Barriers between photos")
-                        .accessibilityValue(photoBarriersEnabled ? "On" : "Off")
-                    }
+                    templateControls(selectedTemplate)
 
                     TemplateCanvasView(
                         template: selectedTemplate,
@@ -522,6 +444,98 @@ struct ComposerView: View {
         .onPreferenceChange(TemplateCanvasFramePreferenceKey.self) {
             templateCanvasFrame = $0
         }
+    }
+
+    private func templateControls(_ template: CardTemplate) -> some View {
+        HStack(spacing: Tokens.Space.sm) {
+            templatePickerButton(template)
+            barrierToggleButton
+        }
+    }
+
+    private func templatePickerButton(_ template: CardTemplate) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                isTemplatePickerPresented = true
+            }
+        } label: {
+            templatePickerLabel(template)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Choose template, " + template.name + " selected")
+        .accessibilityHint("Opens the template gallery")
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: TemplatePickerAnchorPreferenceKey.self,
+                    value: proxy.frame(in: .named("composerRoot"))
+                )
+            }
+        }
+    }
+
+    private func templatePickerLabel(_ template: CardTemplate) -> some View {
+        HStack(spacing: Tokens.Space.sm) {
+            TemplateLayoutPreview(template: template)
+                .frame(width: 26, height: 32)
+
+            Text(template.name)
+                .font(Tokens.Font.headline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .allowsTightening(true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+
+            Image(systemName: "chevron.down")
+                .font(Tokens.Font.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        }
+        .foregroundStyle(Tokens.Color.chromeText)
+        .padding(.horizontal, Tokens.Space.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 44)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                .fill(Tokens.Color.paperCream.opacity(0.82))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                .stroke(Tokens.Color.chromeDivider, lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous))
+    }
+
+    private var barrierToggleButton: some View {
+        Button {
+            photoBarriersEnabled.toggle()
+        } label: {
+            Image(systemName: "rectangle.split.2x1")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                        .fill(barrierButtonBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                        .stroke(barrierButtonBorder, lineWidth: photoBarriersEnabled ? 2 : 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(photoBarriersEnabled ? Color.blue : Tokens.Color.chromeText)
+        .accessibilityLabel("Barriers between photos")
+        .accessibilityValue(photoBarriersEnabled ? "On" : "Off")
+    }
+
+    private var barrierButtonBackground: Color {
+        photoBarriersEnabled ? Color.blue.opacity(0.14) : Tokens.Color.paperCream.opacity(0.82)
+    }
+
+    private var barrierButtonBorder: Color {
+        photoBarriersEnabled ? Color.blue : Tokens.Color.chromeDivider
     }
 
     private var isEditingPhotoCrop: Bool {
@@ -1174,6 +1188,8 @@ struct ComposerView: View {
     }
 
     private func selectTemplate(_ template: CardTemplate) {
+        guard selectedTemplate?.id != template.id else { return }
+
         selectedTemplate = template
         assignments = template.autoFillMatched(photoIDs: photos.map(\.id), aspects: photoAspectsByID)
         selectedSlotID = template.slots.first?.id
@@ -1414,10 +1430,11 @@ private struct TemplateCanvasView: View {
     @Binding var selectedSlotID: String?
     let showsBarriers: Bool
 
-    @State private var dragStartCrop: PhotoCrop?
-    @State private var dragStartSlotID: String?
-    @State private var magnifyStartScale: Double?
-    @State private var magnifyStartSlotID: String?
+    @State private var gestureStartCrop: PhotoCrop?
+    @State private var gestureSlotID: String?
+    @State private var dragBaselineTranslation: CGSize = .zero
+    @State private var magnifyBaseline: CGFloat = 1
+    @State private var isMagnifying = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -1485,13 +1502,7 @@ private struct TemplateCanvasView: View {
         .frame(width: slotSize.width, height: slotSize.height)
         .clipped()
         .contentShape(Rectangle())
-        .highPriorityGesture(
-            TapGesture().onEnded {
-                selectSlot(slot.id)
-            }
-        )
-        .gesture(dragGesture(for: slot, slotSize: slotSize))
-        .simultaneousGesture(magnifyGesture(for: slot, slotSize: slotSize))
+        .gesture(cropGesture(for: slot, slotSize: slotSize))
         // Keep the gesture-bearing view at the slot's actual size. Attaching
         // gestures after `position` makes every positioned child participate
         // in the full canvas layout region, so the last slot wins hit testing.
@@ -1501,55 +1512,87 @@ private struct TemplateCanvasView: View {
         )
     }
 
-    private func dragGesture(for slot: TemplateSlot, slotSize: CGSize) -> some Gesture {
-        DragGesture()
+    private func cropGesture(for slot: TemplateSlot, slotSize: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .simultaneously(with: MagnifyGesture(minimumScaleDelta: 0.005))
             .onChanged { value in
                 selectSlot(slot.id)
                 guard let index = assignments.firstIndex(where: { $0.slotID == slot.id }) else { return }
-                if dragStartSlotID != slot.id {
-                    dragStartSlotID = slot.id
-                    dragStartCrop = assignments[index].crop
+
+                if gestureSlotID != slot.id || gestureStartCrop == nil {
+                    beginCropGesture(for: slot.id, assignmentIndex: index, slotSize: slotSize)
                 }
-                let start = dragStartCrop ?? assignments[index].crop
-                let proposedCrop = PhotoCrop(
-                    scale: start.scale,
-                    offsetX: start.offsetX + Double(value.translation.width / max(slotSize.width, 1)),
-                    offsetY: start.offsetY + Double(value.translation.height / max(slotSize.height, 1))
-                )
-                assignments[index].crop = constrainedCrop(
-                    proposedCrop,
-                    targetAspect: renderedAspect(of: slotSize),
-                    assignmentIndex: index
-                )
+
+                if let magnify = value.second {
+                    if !isMagnifying {
+                        gestureStartCrop = assignments[index].crop
+                        magnifyBaseline = magnify.magnification
+                        isMagnifying = true
+                    }
+
+                    let start = gestureStartCrop ?? assignments[index].crop
+                    let relativeScale = max(magnify.magnification / max(magnifyBaseline, 0.001), 0.001)
+                    let anchorX = Double(magnify.startAnchor.x - 0.5)
+                    let anchorY = Double(magnify.startAnchor.y - 0.5)
+                    let scale = Double(relativeScale)
+                    let proposedCrop = PhotoCrop(
+                        scale: start.scale * scale,
+                        offsetX: start.offsetX * scale + (1 - scale) * anchorX,
+                        offsetY: start.offsetY * scale + (1 - scale) * anchorY
+                    )
+                    assignments[index].crop = constrainedCrop(
+                        proposedCrop,
+                        targetAspect: renderedAspect(of: slotSize),
+                        assignmentIndex: index
+                    )
+                } else if let drag = value.first {
+                    if isMagnifying {
+                        gestureStartCrop = assignments[index].crop
+                        dragBaselineTranslation = drag.translation
+                        isMagnifying = false
+                    }
+
+                    let start = gestureStartCrop ?? assignments[index].crop
+                    let translation = CGSize(
+                        width: drag.translation.width - dragBaselineTranslation.width,
+                        height: drag.translation.height - dragBaselineTranslation.height
+                    )
+                    let proposedCrop = PhotoCrop(
+                        scale: start.scale,
+                        offsetX: start.offsetX + Double(translation.width / max(slotSize.width, 1)),
+                        offsetY: start.offsetY + Double(translation.height / max(slotSize.height, 1))
+                    )
+                    assignments[index].crop = constrainedCrop(
+                        proposedCrop,
+                        targetAspect: renderedAspect(of: slotSize),
+                        assignmentIndex: index
+                    )
+                }
             }
             .onEnded { _ in
-                dragStartCrop = nil
-                dragStartSlotID = nil
+                resetCropGestureState()
             }
     }
 
-    private func magnifyGesture(for slot: TemplateSlot, slotSize: CGSize) -> some Gesture {
-        MagnificationGesture()
-            .onChanged { value in
-                selectSlot(slot.id)
-                guard let index = assignments.firstIndex(where: { $0.slotID == slot.id }) else { return }
-                if magnifyStartSlotID != slot.id {
-                    magnifyStartSlotID = slot.id
-                    magnifyStartScale = assignments[index].crop.scale
-                }
-                let start = magnifyStartScale ?? assignments[index].crop.scale
-                var proposedCrop = assignments[index].crop
-                proposedCrop.scale = start * Double(value)
-                assignments[index].crop = constrainedCrop(
-                    proposedCrop,
-                    targetAspect: renderedAspect(of: slotSize),
-                    assignmentIndex: index
-                )
-            }
-            .onEnded { _ in
-                magnifyStartScale = nil
-                magnifyStartSlotID = nil
-            }
+    private func beginCropGesture(for slotID: String, assignmentIndex: Int, slotSize: CGSize) {
+        gestureSlotID = slotID
+        gestureStartCrop = constrainedCrop(
+            assignments[assignmentIndex].crop,
+            targetAspect: renderedAspect(of: slotSize),
+            assignmentIndex: assignmentIndex
+        )
+        assignments[assignmentIndex].crop = gestureStartCrop ?? assignments[assignmentIndex].crop
+        dragBaselineTranslation = .zero
+        magnifyBaseline = 1
+        isMagnifying = false
+    }
+
+    private func resetCropGestureState() {
+        gestureStartCrop = nil
+        gestureSlotID = nil
+        dragBaselineTranslation = .zero
+        magnifyBaseline = 1
+        isMagnifying = false
     }
 
     private func constrainedCrop(
@@ -1570,9 +1613,6 @@ private struct TemplateCanvasView: View {
     private func selectSlot(_ slotID: String) {
         guard selectedSlotID != slotID else { return }
         selectedSlotID = slotID
-        dragStartCrop = nil
-        dragStartSlotID = nil
-        magnifyStartScale = nil
-        magnifyStartSlotID = nil
+        resetCropGestureState()
     }
 }
