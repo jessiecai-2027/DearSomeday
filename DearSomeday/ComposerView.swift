@@ -69,6 +69,9 @@ struct ComposerView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var isImportingPhotos = false
     @State private var deletingPhotoIDs: Set<UUID> = []
+    @State private var reorderingPhotoID: UUID?
+    @State private var reorderLocation: CGPoint?
+    @State private var reorderTouchOffset: CGSize?
 
     @State private var selectedTemplate: CardTemplate?
     @State private var assignments: [SlotAssignment] = []
@@ -284,8 +287,10 @@ struct ComposerView: View {
             ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                 photoThumb(photo, selectionNumber: index + 1)
                     .aspectRatio(1, contentMode: .fit)
+                    .zIndex(reorderingPhotoID == photo.id ? 1 : 0)
             }
         }
+        .coordinateSpace(name: "selectedPhotoGrid")
     }
 
     private var selectedPhotoColumns: [GridItem] {
@@ -392,10 +397,123 @@ struct ComposerView: View {
             .frame(width: side, height: side)
             .background(Color(.secondarySystemBackground))
             .clipShape(shape)
+            .scaleEffect(reorderingPhotoID == photo.id ? 1.06 : 1)
+            .offset(reorderOffset(for: photo, selectionNumber: selectionNumber, side: side))
+            .shadow(
+                color: .black.opacity(reorderingPhotoID == photo.id ? 0.22 : 0),
+                radius: 10,
+                y: 5
+            )
             .scaleEffect(deletingPhotoIDs.contains(photo.id) ? 0.01 : 1)
             .opacity(deletingPhotoIDs.contains(photo.id) ? 0 : 1)
+            .onLongPressGesture(minimumDuration: 1.2, maximumDistance: 20) {
+                beginReordering(photo)
+            }
+            .simultaneousGesture(reorderDragGesture(for: photo, side: side))
         }
         .aspectRatio(1, contentMode: .fit)
+    }
+
+    private func reorderDragGesture(
+        for photo: CreationPhoto,
+        side: CGFloat
+    ) -> some Gesture {
+        DragGesture(
+            minimumDistance: 0,
+            coordinateSpace: .named("selectedPhotoGrid")
+        )
+            .onChanged { value in
+                guard reorderingPhotoID == photo.id else { return }
+                updateReordering(photo, drag: value, itemSide: side)
+            }
+            .onEnded { _ in
+                guard reorderingPhotoID == photo.id else { return }
+                finishReordering()
+            }
+    }
+
+    private func beginReordering(_ photo: CreationPhoto) {
+        guard reorderingPhotoID == nil else { return }
+        reorderingPhotoID = photo.id
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    private func updateReordering(
+        _ photo: CreationPhoto,
+        drag: DragGesture.Value,
+        itemSide: CGFloat
+    ) {
+        guard let sourceIndex = photos.firstIndex(where: { $0.id == photo.id }) else { return }
+        let stride = itemSide + 12
+        let sourceCenter = photoGridCenter(for: sourceIndex, itemSide: itemSide)
+
+        if reorderTouchOffset == nil {
+            reorderTouchOffset = CGSize(
+                width: drag.startLocation.x - sourceCenter.x,
+                height: drag.startLocation.y - sourceCenter.y
+            )
+        }
+        reorderLocation = drag.location
+
+        let targetColumn = min(2, max(0, Int(drag.location.x / stride)))
+        let targetRow = min(1, max(0, Int(drag.location.y / stride)))
+        let targetIndex = min(photos.count - 1, targetRow * 3 + targetColumn)
+        guard targetIndex != sourceIndex else { return }
+
+        let updateOrder = {
+            photos.move(
+                fromOffsets: IndexSet(integer: sourceIndex),
+                toOffset: targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
+            )
+        }
+        if accessibilityReduceMotion {
+            updateOrder()
+        } else {
+            withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.86)) {
+                updateOrder()
+            }
+        }
+    }
+
+    private func reorderOffset(
+        for photo: CreationPhoto,
+        selectionNumber: Int,
+        side: CGFloat
+    ) -> CGSize {
+        guard
+            reorderingPhotoID == photo.id,
+            let location = reorderLocation,
+            let touchOffset = reorderTouchOffset
+        else { return .zero }
+
+        let currentCenter = photoGridCenter(for: selectionNumber - 1, itemSide: side)
+        return CGSize(
+            width: location.x - touchOffset.width - currentCenter.x,
+            height: location.y - touchOffset.height - currentCenter.y
+        )
+    }
+
+    private func photoGridCenter(for index: Int, itemSide: CGFloat) -> CGPoint {
+        let stride = itemSide + 12
+        return CGPoint(
+            x: CGFloat(index % 3) * stride + itemSide / 2,
+            y: CGFloat(index / 3) * stride + itemSide / 2
+        )
+    }
+
+    private func finishReordering() {
+        let clearReorderState = {
+            reorderingPhotoID = nil
+            reorderLocation = nil
+            reorderTouchOffset = nil
+        }
+        if accessibilityReduceMotion {
+            clearReorderState()
+        } else {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                clearReorderState()
+            }
+        }
     }
 
     // MARK: - Step 2: template
