@@ -68,6 +68,7 @@ struct ComposerView: View {
     @State private var addedFingerprints: Set<String> = []
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var isImportingPhotos = false
+    @State private var deletingPhotoIDs: Set<UUID> = []
 
     @State private var selectedTemplate: CardTemplate?
     @State private var assignments: [SlotAssignment] = []
@@ -254,7 +255,7 @@ struct ComposerView: View {
 
     private var photoSelection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Choose 1-6 photos")
+            Text("\(photos.count)/\(ComposerLogic.maxPhotos) photos selected")
                 .font(Tokens.Font.headline)
 
             if photos.isEmpty {
@@ -270,9 +271,6 @@ struct ComposerView: View {
                 .disabled(photos.count >= ComposerLogic.maxPhotos)
             }
 
-            Text("\(photos.count) of \(ComposerLogic.maxPhotos) selected")
-                .font(Tokens.Font.caption)
-                .foregroundStyle(Tokens.Color.chromeText)
         }
     }
 
@@ -372,7 +370,7 @@ struct ComposerView: View {
                     .frame(width: side, height: side, alignment: .topLeading)
 
                 Button {
-                    remove(photo)
+                    beginRemoving(photo)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .symbolRenderingMode(.palette)
@@ -383,11 +381,14 @@ struct ComposerView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .accessibilityLabel("Remove photo")
+                .disabled(deletingPhotoIDs.contains(photo.id))
                 .frame(width: side, height: side, alignment: .topTrailing)
             }
             .frame(width: side, height: side)
             .background(Color(.secondarySystemBackground))
             .clipShape(shape)
+            .scaleEffect(deletingPhotoIDs.contains(photo.id) ? 0.01 : 1)
+            .opacity(deletingPhotoIDs.contains(photo.id) ? 0 : 1)
         }
         .aspectRatio(1, contentMode: .fit)
     }
@@ -1112,9 +1113,30 @@ struct ComposerView: View {
         ensureTemplateSelection()
     }
 
+    private func beginRemoving(_ photo: CreationPhoto) {
+        guard !deletingPhotoIDs.contains(photo.id) else { return }
+
+        if accessibilityReduceMotion {
+            remove(photo)
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            _ = deletingPhotoIDs.insert(photo.id)
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                remove(photo)
+            }
+        }
+    }
+
     private func remove(_ photo: CreationPhoto) {
         services.creationService.discard([photo])
         photos.removeAll { $0.id == photo.id }
+        deletingPhotoIDs.remove(photo.id)
         addedIdentifiers = PhotoSelectionLogic.identifiers(
             afterRemoving: photo.sourceIdentifier,
             from: addedIdentifiers
