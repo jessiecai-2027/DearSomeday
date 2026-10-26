@@ -930,7 +930,9 @@ struct ComposerView: View {
             )
             .frame(maxWidth: .infinity)
             .onPreferenceChange(PostcardCanvasSizePreferenceKey.self) {
+                guard backCanvasSize != $0 else { return }
                 backCanvasSize = $0
+                selectBackFont(selectedBackFont)
             }
 
             fontOptions
@@ -1541,18 +1543,12 @@ struct ComposerView: View {
     }
 
     private func selectBackFont(_ font: PostcardBackFont) {
-        if lockedBackFontSizes[font.id] != nil {
-            backFontId = font.id
-            fontSelectionMessage = nil
-            messageHasNoMoreRoom = false
-            return
-        }
-
         guard backCanvasSize.width > 0, backCanvasSize.height > 0 else { return }
         guard let pointSize = PostcardMessageLayout.largestFittingPointSize(
             for: backText,
             font: font,
-            canvasSize: backCanvasSize
+            canvasSize: backCanvasSize,
+            minimum: 1
         ) else {
             fontSelectionMessage = "This message is too long for this font."
             return

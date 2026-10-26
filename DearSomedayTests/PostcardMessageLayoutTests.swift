@@ -9,6 +9,36 @@ struct PostcardMessageLayoutTests {
         height: PostcardCanvasMetrics.maxWidth / PostcardCanvasMetrics.aspectRatio
     )
 
+    @Test func everyFontTransitionKeepsTheFullBoundaryMessageVisible() throws {
+        for source in PostcardBackFont.allCases {
+            let message = PostcardMessageLayout.longestFittingReplacement(
+                in: "", replacing: "".startIndex..<"".endIndex,
+                with: String(repeating: "A memory worth keeping. ", count: 300),
+                fonts: [source.uiFont(pointSize: PostcardBackFont.normalPointSize)],
+                canvasSize: canvasSize, maximumLength: Int.max
+            )
+            for destination in PostcardBackFont.allCases where destination != source {
+                let size = try #require(PostcardMessageLayout.largestFittingPointSize(
+                    for: message, font: destination, canvasSize: canvasSize, minimum: 1
+                ))
+                let storage = NSTextStorage(string: message, attributes: [
+                    .font: destination.uiFont(pointSize: size)
+                ])
+                let manager = NSLayoutManager()
+                let container = NSTextContainer()
+                PostcardMessageLayout.configure(container, for: canvasSize)
+                storage.addLayoutManager(manager)
+                manager.addTextContainer(container)
+                manager.ensureLayout(for: container)
+                let visible = manager.characterRange(
+                    forGlyphRange: manager.glyphRange(for: container), actualGlyphRange: nil
+                )
+                #expect(NSMaxRange(visible) == (message as NSString).length,
+                    "Full message must remain visible from \(source.name) to \(destination.name)")
+            }
+        }
+    }
+
     @Test func ordinaryTextFitsButExcessiveReturnsDoNot() {
         let font = PostcardBackFont.caveat.uiFont(pointSize: 17)
 

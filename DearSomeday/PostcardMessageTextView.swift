@@ -33,7 +33,15 @@ enum PostcardMessageLayout {
         // measurement-only sentinel makes spaces, tabs, and empty caret lines
         // participate in the same boundary check as visible text.
         let hasTrailingWhitespace = text.last?.isWhitespace == true
-        let measuredText = hasTrailingWhitespace ? text + "M" : text
+        let measuredText: String
+        if hasTrailingWhitespace {
+            let trailingStart = text.lastIndex(where: { !$0.isWhitespace })
+                .map { text.index(after: $0) } ?? text.startIndex
+            let trailing = text[trailingStart...].replacingOccurrences(of: " ", with: "\u{00A0}")
+            measuredText = String(text[..<trailingStart]) + trailing + "M"
+        } else {
+            measuredText = text
+        }
         let storage = NSTextStorage(string: measuredText, attributes: [.font: font])
         let layoutManager = NSLayoutManager()
         let container = NSTextContainer()
@@ -59,11 +67,15 @@ enum PostcardMessageLayout {
         // Newline glyphs may all be consumed even when their line fragments
         // extend beyond the container. Include both rendered text and the
         // trailing caret line so repeated returns cannot escape the limit.
-        let renderedBottom = max(
+        var lineBottom: CGFloat = 0
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { rect, _, _, _, _ in
+            lineBottom = max(lineBottom, rect.maxY)
+        }
+        let renderedBottom = max(lineBottom, max(
             layoutManager.usedRect(for: container).maxY,
             layoutManager.extraLineFragmentUsedRect.maxY
-        )
-        return renderedBottom <= availableHeight + 0.5
+        ))
+        return renderedBottom <= availableHeight
     }
 
     static func fits(_ text: String, fonts: [UIFont], canvasSize: CGSize) -> Bool {
@@ -143,7 +155,13 @@ struct PostcardMessageTextView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> StampWrappingTextView {
-        let textView = StampWrappingTextView()
+        // Use the same TextKit engine for editing and fit measurements.
+        let storage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        let container = NSTextContainer()
+        storage.addLayoutManager(layoutManager)
+        layoutManager.addTextContainer(container)
+        let textView = StampWrappingTextView(frame: .zero, textContainer: container)
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
         textView.isOpaque = false
