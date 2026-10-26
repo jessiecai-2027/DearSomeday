@@ -601,7 +601,7 @@
         <option value="photos">Photos</option>
         <option value="location">Location</option>
         <option value="notifications">Notifications</option>
-        <option value="trusted-time">Time checks</option>
+        <option value="trusted-time">Device time</option>
         <option value="local-storage">Storage and backups</option>
         <option value="not-collected">What we do not collect</option>
         <option value="sharing">When information leaves your device</option>
@@ -618,7 +618,7 @@
       <section aria-labelledby="overview-title">
         <h2 id="overview-title">Overview</h2>
         <p><strong>The short version:</strong> Your postcards are stored on your device. You do not need an account. The developer does not receive your postcards, photos, location, or other personal content.</p>
-        <p>Dear Someday has no ads, analytics, tracking tools, or third-party marketing software. A small amount of information may go to Apple when you choose to use location, when the app checks the correct time, or when your device creates a backup. Those cases are explained below.</p>
+        <p>Dear Someday has no ads, analytics, tracking tools, or third-party marketing software. A small amount of information may go to Apple when you choose to use location or when your device creates a backup. Those cases are explained below.</p>
       </section>
 
       <section id="information-you-create" aria-labelledby="information-you-create-title">
@@ -657,10 +657,9 @@
       </section>
 
       <section id="trusted-time" aria-labelledby="trusted-time-title">
-        <h2 id="trusted-time-title">Time Checks</h2>
-        <p>The app checks the correct time so that changing your device clock cannot unlock a postcard early. It does this with a small, encrypted HTTPS request to <code>www.apple.com</code>. The app reads only the date and time in Apple’s response.</p>
-        <p>This request does not include postcard content, photos, place names, or an account ID. Like any internet request, it may give Apple technical information such as your IP address. Apple handles that information under <a href="https://www.apple.com/legal/privacy/" rel="external">Apple’s Privacy Policy</a>. The developer does not receive the request.</p>
-        <p>The app saves a small time reference and device-uptime value on your device so it can use the check.</p>
+        <h2 id="trusted-time-title">Device Time</h2>
+        <p>The app uses the date and time configured on your device to determine when a postcard unlocks. It stores a small local time reference and device-uptime value so the timer can advance while the app is running.</p>
+        <p>The app does not make a network request to check the time. Changing the date or time on your device may change when a postcard unlocks.</p>
       </section>
 
       <section id="local-storage" aria-labelledby="local-storage-title">
@@ -691,7 +690,6 @@
         <p>Information may go to Apple when:</p>
         <ul>
           <li>you ask the app to turn your location into a place name;</li>
-          <li>the app checks the correct time; or</li>
           <li>you use an Apple service such as iCloud Backup.</li>
         </ul>
         <p>The developer may provide information if legally required. Because postcard content is not sent to the developer, the developer normally has no postcard content to provide.</p>
