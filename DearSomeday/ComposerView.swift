@@ -67,6 +67,7 @@ struct ComposerView: View {
     @State private var addedIdentifiers: Set<String> = []
     @State private var addedFingerprints: Set<String> = []
     @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var isImportingPhotos = false
 
     @State private var selectedTemplate: CardTemplate?
     @State private var assignments: [SlotAssignment] = []
@@ -325,8 +326,19 @@ struct ComposerView: View {
             maxSelectionCount: ComposerLogic.maxPhotos,
             selectionBehavior: .ordered,
             matching: .images,
-            label: label
+            label: {
+                if isImportingPhotos {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Adding photos...")
+                            .font(Tokens.Font.button)
+                    }
+                } else {
+                    label()
+                }
+            }
         )
+        .disabled(isImportingPhotos)
     }
 
     private func photoThumb(_ photo: CreationPhoto, selectionNumber: Int) -> some View {
@@ -1038,10 +1050,17 @@ struct ComposerView: View {
     // MARK: - Photo import
 
     private func importPicked(_ items: [PhotosPickerItem]) async {
+        guard !items.isEmpty, !isImportingPhotos else { return }
+        isImportingPhotos = true
+
+        var importedPhotos: [CreationPhoto] = []
+        var pendingIdentifiers = addedIdentifiers
+        var pendingFingerprints = addedFingerprints
+
         for item in items {
-            guard photos.count < ComposerLogic.maxPhotos else { break }
+            guard photos.count + importedPhotos.count < ComposerLogic.maxPhotos else { break }
             let identifier = item.itemIdentifier
-            guard PhotoSelectionLogic.canAdd(identifier: identifier, selectedIdentifiers: addedIdentifiers) else {
+            guard PhotoSelectionLogic.canAdd(identifier: identifier, selectedIdentifiers: pendingIdentifiers) else {
                 continue
             }
             guard
@@ -1051,7 +1070,7 @@ struct ComposerView: View {
             let fingerprint = PhotoSelectionLogic.fingerprint(for: data)
             guard PhotoSelectionLogic.canAdd(
                 fingerprint: fingerprint,
-                selectedFingerprints: addedFingerprints
+                selectedFingerprints: pendingFingerprints
             ) else {
                 continue
             }
@@ -1061,20 +1080,35 @@ struct ComposerView: View {
                     sourceIdentifier: identifier,
                     sourceFingerprint: fingerprint
                 )
-                photos.append(photo)
-                addedIdentifiers = PhotoSelectionLogic.identifiers(
+                importedPhotos.append(photo)
+                pendingIdentifiers = PhotoSelectionLogic.identifiers(
                     afterAdding: identifier,
-                    to: addedIdentifiers
+                    to: pendingIdentifiers
                 )
-                addedFingerprints = PhotoSelectionLogic.fingerprints(
+                pendingFingerprints = PhotoSelectionLogic.fingerprints(
                     afterAdding: fingerprint,
-                    to: addedFingerprints
+                    to: pendingFingerprints
                 )
             } catch {
                 errorMessage = "Couldn’t add one of those photos."
             }
         }
+
+        let updateSelection = {
+            photos.append(contentsOf: importedPhotos)
+            addedIdentifiers = pendingIdentifiers
+            addedFingerprints = pendingFingerprints
+        }
+        if accessibilityReduceMotion {
+            updateSelection()
+        } else {
+            withAnimation(.easeOut(duration: 0.22)) {
+                updateSelection()
+            }
+        }
+
         pickerItems = []
+        isImportingPhotos = false
         ensureTemplateSelection()
     }
 
