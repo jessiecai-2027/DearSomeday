@@ -35,6 +35,14 @@ private struct TemplateCanvasFramePreferenceKey: PreferenceKey {
     }
 }
 
+private struct BackCanvasFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
 private struct FontPickerAnchorPreferenceKey: PreferenceKey {
     static var defaultValue: CGRect?
 
@@ -96,6 +104,7 @@ struct ComposerView: View {
         PostcardBackFont.defaultFont.id: PostcardBackFont.normalPointSize
     ]
     @State private var backCanvasSize: CGSize = .zero
+    @State private var backCanvasFrame: CGRect = .zero
     @State private var messageHasNoMoreRoom = false
     @State private var fontSelectionMessage: String?
     @State private var backTextColorHex = PostcardBackTextColor.defaultColor.hex
@@ -160,7 +169,7 @@ struct ComposerView: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { focusedField = nil }
+                    Button("Done") { dismissKeyboard() }
                         .font(Tokens.Font.button)
                 }
             }
@@ -171,6 +180,17 @@ struct ComposerView: View {
         )
         .coordinateSpace(name: "composerRoot")
         .simultaneousGesture(cropEditingDismissGesture)
+        .simultaneousGesture(
+            SpatialTapGesture(coordinateSpace: .named("composerRoot"))
+                .onEnded { value in
+                    guard step == .back, !backCanvasFrame.isEmpty,
+                          !backCanvasFrame.contains(value.location) else { return }
+                    dismissKeyboard()
+                }
+        )
+        .onPreferenceChange(BackCanvasFramePreferenceKey.self) {
+            backCanvasFrame = $0
+        }
         .overlayPreferenceValue(TemplatePickerAnchorPreferenceKey.self) { anchor in
             templatePickerOverlay(anchor: anchor)
         }
@@ -242,7 +262,7 @@ struct ComposerView: View {
         .scrollContentBackground(.hidden)
         .background(.clear)
         .scrollDismissesKeyboard(.interactively)
-        .scrollDisabled(step == .template || step == .back || isEditingPhotoCrop)
+        .scrollDisabled(step == .template || isEditingPhotoCrop)
     }
 
     private var footer: some View {
@@ -886,15 +906,20 @@ struct ComposerView: View {
                         key: PostcardCanvasSizePreferenceKey.self,
                         value: proxy.size
                     )
+                    .preference(
+                        key: BackCanvasFramePreferenceKey.self,
+                        value: proxy.frame(in: .named("composerRoot"))
+                    )
                 }
             }
             .clipped()
             .overlay(alignment: .bottomTrailing) {
                 if messageHasNoMoreRoom {
                     Text("No more room")
-                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .font(.system(size: 10, weight: .bold, design: .default))
                         .foregroundStyle(.red)
-                        .padding(15)
+                        .padding(.trailing, 22)
+                        .padding(.bottom, 19)
                         .allowsHitTesting(false)
                 }
             }
@@ -931,6 +956,16 @@ struct ComposerView: View {
                     .accessibilityLabel("Custom color")
             }
         }
+    }
+
+    private func dismissKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 
     private var fontOptions: some View {

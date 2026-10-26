@@ -28,10 +28,11 @@ enum PostcardMessageLayout {
         guard canvasSize.width > 0, canvasSize.height > 0 else { return false }
         guard !text.isEmpty else { return true }
 
-        // TextKit does not materialize the final empty line when a string ends
-        // in one or more newlines. A sentinel on that already-empty line makes
-        // the editor's trailing caret line participate in measurement.
-        let measuredText = text.hasSuffix("\n") ? text + "M" : text
+        // TextKit can omit trailing whitespace from its used bounds. A visible
+        // measurement-only sentinel makes spaces, tabs, and empty caret lines
+        // participate in the same boundary check as visible text.
+        let hasTrailingWhitespace = text.last?.isWhitespace == true
+        let measuredText = hasTrailingWhitespace ? text + "M" : text
         let storage = NSTextStorage(string: measuredText, attributes: [.font: font])
         let layoutManager = NSLayoutManager()
         let container = NSTextContainer()
@@ -165,6 +166,8 @@ struct PostcardMessageTextView: UIViewRepresentable {
 
     func updateUIView(_ textView: StampWrappingTextView, context: Context) {
         context.coordinator.parent = self
+        let selection = textView.selectedRange
+        let wasAtEnd = NSMaxRange(selection) == (textView.text as NSString).length
 
         if textView.text != text {
             textView.text = text
@@ -177,6 +180,18 @@ struct PostcardMessageTextView: UIViewRepresentable {
         textView.isScrollEnabled = false
         textView.isUserInteractionEnabled = isEditable
         textView.setNeedsLayout()
+        textView.layoutIfNeeded()
+        let textLength = (text as NSString).length
+        if wasAtEnd {
+            textView.selectedRange = NSRange(location: textLength, length: 0)
+        } else {
+            let location = min(selection.location, textLength)
+            textView.selectedRange = NSRange(
+                location: location,
+                length: min(selection.length, textLength - location)
+            )
+        }
+        textView.setContentOffset(.zero, animated: false)
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -213,12 +228,12 @@ struct PostcardMessageTextView: UIViewRepresentable {
             }
 
             guard replacement.count > 1 else {
-                parent.onCapacityChange?(isVisualOverflow(proposedText, in: textView))
+                parent.onCapacityChange?(true)
                 return false
             }
 
             let validationFonts = textView.resolvedValidationFonts(parent.validationFonts)
-            let acceptedReplacement = PostcardMessageLayout.longestFittingReplacement(
+            var acceptedReplacement = PostcardMessageLayout.longestFittingReplacement(
                 in: textView.text,
                 replacing: swiftRange,
                 with: replacement,
@@ -226,8 +241,15 @@ struct PostcardMessageTextView: UIViewRepresentable {
                 canvasSize: textView.bounds.size,
                 maximumLength: parent.maximumLength
             )
+            // A clipped paste at the end should leave the caret after its last
+            // visible character, rather than after trailing spaces or returns.
+            if swiftRange.upperBound == textView.text.endIndex {
+                while acceptedReplacement.last?.isWhitespace == true {
+                    acceptedReplacement.removeLast()
+                }
+            }
             guard !acceptedReplacement.isEmpty else {
-                parent.onCapacityChange?(isVisualOverflow(proposedText, in: textView))
+                parent.onCapacityChange?(true)
                 return false
             }
 
@@ -241,7 +263,7 @@ struct PostcardMessageTextView: UIViewRepresentable {
                 length: 0
             )
             parent.text = acceptedText
-            parent.onCapacityChange?(isVisualOverflow(proposedText, in: textView))
+            parent.onCapacityChange?(true)
             return false
         }
 
@@ -250,10 +272,6 @@ struct PostcardMessageTextView: UIViewRepresentable {
                 && textView.canFit(candidate, using: parent.validationFonts)
         }
 
-        private func isVisualOverflow(_ candidate: String, in textView: StampWrappingTextView) -> Bool {
-            candidate.count <= parent.maximumLength
-                && !textView.canFit(candidate, using: parent.validationFonts)
-        }
     }
 }
 

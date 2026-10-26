@@ -92,8 +92,8 @@ enum PostcardBackFont: String, CaseIterable, Identifiable {
     case josefinSans
 
     static let defaultFont: PostcardBackFont = .caveat
-    static let normalPointSize: CGFloat = 17
-    static let minimumLockedPointSize: CGFloat = 12
+    static let normalPointSize: CGFloat = 18
+    static let minimumLockedPointSize: CGFloat = 13
     static let minimumLegacyPointSize: CGFloat = 8
 
     var id: String { rawValue }

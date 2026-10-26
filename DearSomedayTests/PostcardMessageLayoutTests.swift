@@ -24,6 +24,25 @@ struct PostcardMessageLayoutTests {
         ))
     }
 
+    @Test func trailingSpacesAreCutOffAtTheSpaceBoundary() {
+        let font = PostcardBackFont.caveat.uiFont(pointSize: PostcardBackFont.normalPointSize)
+        let currentText = "A note "
+        let spaces = String(repeating: " ", count: 5_000)
+        let accepted = PostcardMessageLayout.longestFittingReplacement(
+            in: currentText,
+            replacing: currentText.endIndex..<currentText.endIndex,
+            with: spaces,
+            fonts: [font],
+            canvasSize: canvasSize,
+            maximumLength: Int.max
+        )
+
+        #expect(!accepted.isEmpty)
+        #expect(accepted.count < spaces.count)
+        #expect(PostcardMessageLayout.fits(currentText + accepted, font: font, canvasSize: canvasSize))
+        #expect(!PostcardMessageLayout.fits(currentText + accepted + " ", font: font, canvasSize: canvasSize))
+    }
+
     @Test func longUnbrokenAndEmojiHeavyTextRespectTheBoundary() {
         let font = PostcardBackFont.caveat.uiFont(pointSize: 17)
 
@@ -39,12 +58,12 @@ struct PostcardMessageLayoutTests {
         ))
     }
 
-    @Test func unusedFontFindsALockedSizeBetweenTwelveAndSeventeen() throws {
+    @Test func unusedFontFindsALockedSizeWithinConfiguredBounds() throws {
         let font = PostcardBackFont.ebGaramond
         var text = "A memory worth keeping "
         while PostcardMessageLayout.fits(
             text,
-            font: font.uiFont(pointSize: 17),
+            font: font.uiFont(pointSize: PostcardBackFont.normalPointSize),
             canvasSize: canvasSize
         ) {
             text += "A memory worth keeping "
@@ -55,8 +74,8 @@ struct PostcardMessageLayoutTests {
             font: font,
             canvasSize: canvasSize
         ))
-        #expect(size >= 12)
-        #expect(size < 17)
+        #expect(size >= PostcardBackFont.minimumLockedPointSize)
+        #expect(size < PostcardBackFont.normalPointSize)
         #expect(PostcardMessageLayout.fits(
             text,
             font: font.uiFont(pointSize: size),
