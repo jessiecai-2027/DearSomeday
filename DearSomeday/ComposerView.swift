@@ -411,7 +411,7 @@ struct ComposerView: View {
                         } label: {
                             HStack(spacing: Tokens.Space.sm) {
                                 TemplateLayoutPreview(template: selectedTemplate)
-                                    .frame(width: 36, height: 45)
+                                    .frame(width: 28, height: 35)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Template")
@@ -430,8 +430,8 @@ struct ComposerView: View {
                             }
                             .foregroundStyle(Tokens.Color.chromeText)
                             .padding(.horizontal, Tokens.Space.sm)
-                            .padding(.vertical, Tokens.Space.xs)
-                            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            .padding(.vertical, Tokens.Space.xxs)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .background(
                                 RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
                                     .fill(Tokens.Color.paperCream.opacity(0.82))
@@ -1357,27 +1357,26 @@ private struct TemplatePickerPopover: View {
                     Button {
                         onSelect(template)
                     } label: {
-                        VStack(spacing: Tokens.Space.xs) {
+                        HStack(spacing: Tokens.Space.xs) {
                             TemplateLayoutPreview(template: template)
-                                .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
-                                .overlay(alignment: .topTrailing) {
-                                    if isSelected {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .symbolRenderingMode(.palette)
-                                            .foregroundStyle(.white, .blue)
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .padding(Tokens.Space.xxs)
-                                    }
-                                }
+                                .frame(width: 42, height: 52)
 
                             Text(template.name)
                                 .font(Tokens.Font.caption.weight(.semibold))
                                 .foregroundStyle(Tokens.Color.chromeText)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+
+                            Spacer(minLength: 0)
+
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.blue)
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
                         }
                         .padding(Tokens.Space.xs)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
                                 .fill(Tokens.Color.paperCream.opacity(0.72))
