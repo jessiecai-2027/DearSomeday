@@ -116,6 +116,8 @@ struct ComposerView: View {
     @State private var stampOpacity: Double = 1
     @State private var flyingStamp: StampOption?
     @State private var flyingStampFrame: CGRect = .zero
+    @State private var flyingStampDestination: CGRect = .zero
+    @State private var stampFlightProgress: CGFloat = 0
     @State private var stampAnimationTask: Task<Void, Never>?
     @State private var locationLabel = ""
     @StateObject private var currentLocation = CurrentLocationResolver()
@@ -203,10 +205,15 @@ struct ComposerView: View {
             fontPickerOverlay(anchor: anchor)
         }
         .overlay {
-            GeometryReader { _ in
+            GeometryReader { proxy in
                 if let flyingStamp {
-                    PostcardPlacedStampImage(option: flyingStamp, size: flyingStampFrame.size)
-                        .position(x: flyingStampFrame.midX, y: flyingStampFrame.midY)
+                    let overlayOrigin = proxy.frame(in: .named("composerRoot")).origin
+                    PostcardStampImage(option: flyingStamp)
+                        .modifier(StampFlightModifier(
+                            source: flyingStampFrame.offsetBy(dx: -overlayOrigin.x, dy: -overlayOrigin.y),
+                            destination: flyingStampDestination.offsetBy(dx: -overlayOrigin.x, dy: -overlayOrigin.y),
+                            progress: stampFlightProgress
+                        ))
                         .shadow(color: .black.opacity(0.2), radius: 8, y: 5)
                 }
             }
@@ -1204,30 +1211,24 @@ struct ComposerView: View {
         initialTransaction.disablesAnimations = true
         withTransaction(initialTransaction) {
             flyingStampFrame = sourceFrame
+            flyingStampDestination = destination
+            stampFlightProgress = 0
             flyingStamp = option
         }
         stampAnimationTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 50_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.45)) {
-                flyingStampFrame = destination
+            withAnimation(.linear(duration: 0.65)) {
+                stampFlightProgress = 1
             }
 
-            try? await Task.sleep(nanoseconds: 450_000_000)
+            try? await Task.sleep(nanoseconds: 650_000_000)
             guard !Task.isCancelled else { return }
             selectedStampID = option.id
             hasPlacedStamp = true
             stampOpacity = 1
             flyingStamp = nil
-            withAnimation(.easeIn(duration: 0.12)) {
-                stampMotion = .pressed
-            }
-
-            try? await Task.sleep(nanoseconds: 120_000_000)
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.66)) {
-                stampMotion = .settled
-            }
+            stampMotion = .settled
         }
     }
 
@@ -1640,6 +1641,40 @@ private struct TemplateLayoutPreview: View {
             .clipped()
         }
         .accessibilityHidden(true)
+    }
+}
+
+private struct StampFlightModifier: AnimatableModifier {
+    let source: CGRect
+    let destination: CGRect
+    var progress: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let t = min(1, max(0, progress))
+        let approach = min(t / 0.72, 1)
+        let travel = approach * approach * (3 - 2 * approach)
+        let landing = max(0, (t - 0.72) / 0.28)
+        let settling = landing * landing * (3 - 2 * landing)
+        let remaining = 1 - travel
+        // A control point directly above the destination makes the final
+        // approach vertical, while preserving a continuous curved flight.
+        let controlY = min(source.midY, destination.midY) - destination.height * 0.65
+        let x = remaining * remaining * source.midX + (1 - remaining * remaining) * destination.midX
+        let y = remaining * remaining * source.midY
+            + 2 * remaining * travel * controlY + travel * travel * destination.midY
+        let width = source.width + (destination.width - source.width) * travel
+        let height = source.height + (destination.height - source.height) * travel
+        let scale = 1 + 0.35 * travel * (1 - settling)
+
+        content
+            .frame(width: width, height: height)
+            .scaleEffect(scale)
+            .position(x: x, y: y)
     }
 }
 
