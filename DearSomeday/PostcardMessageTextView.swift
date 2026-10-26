@@ -11,7 +11,7 @@ enum PostcardMessageLayout {
             height: max(canvasSize.height - edgePadding * 2 - bottomClearance, 0)
         )
         container.lineFragmentPadding = 0
-        container.lineBreakMode = .byCharWrapping
+        container.lineBreakMode = .byWordWrapping
 
         let stampBox = PostcardBackLayout.stampFrame(in: canvasSize)
         let stampPadding = canvasSize.width * 0.03
@@ -168,7 +168,7 @@ struct PostcardMessageTextView: UIViewRepresentable {
         textView.clipsToBounds = true
         textView.contentInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        textView.textContainer.lineBreakMode = .byCharWrapping
+        textView.textContainer.lineBreakMode = .byWordWrapping
         textView.textContainer.widthTracksTextView = false
         textView.textContainer.heightTracksTextView = false
         textView.setContentHuggingPriority(.defaultLow, for: .horizontal)

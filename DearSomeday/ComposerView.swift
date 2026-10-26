@@ -1290,15 +1290,7 @@ struct ComposerView: View {
                     Text("Summary")
                         .font(Tokens.Font.subheadline.weight(.semibold))
 
-                    PostcardSummaryTextView(
-                        title: title,
-                        message: backText,
-                        messageFont: selectedBackFont.uiFont(pointSize: selectedBackFontPointSize),
-                        messageColor: UIColor(Color(hex: backTextColorHex))
-                    )
-                    .overlay(alignment: .topLeading) {
-                        GeometryReader { proxy in
-                            let previewWidth = max((proxy.size.width - 16) / 2, 0)
+                    HStack(alignment: .top, spacing: 16) {
                             TemplateCanvasView(
                                 template: selectedTemplate,
                                 photos: photos,
@@ -1306,28 +1298,31 @@ struct ComposerView: View {
                                 selectedSlotID: .constant(nil),
                                 showsBarriers: photoBarriersEnabled
                             )
-                            .frame(
-                                width: previewWidth,
-                                height: previewWidth / PostcardCanvasMetrics.aspectRatio
-                            )
+                            .aspectRatio(PostcardCanvasMetrics.aspectRatio, contentMode: .fit)
+                            .frame(maxWidth: .infinity)
                             .accessibilityLabel("Postcard front preview")
+
+                        if let selectedStamp {
+                            VStack(spacing: Tokens.Space.sm) {
+                                Text("Stamp")
+                                    .font(Tokens.Font.caption)
+                                PostcardStampImage(option: selectedStamp)
+                                    .frame(maxWidth: 112)
+                                    .frame(height: 128)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Selected \(selectedStamp.accessibilityLabel)")
                         }
-                        .allowsHitTesting(false)
                     }
+                    .allowsHitTesting(false)
 
-                    if let selectedStamp {
-                        HStack(spacing: Tokens.Space.sm) {
-                            PostcardStampImage(option: selectedStamp)
-                                .frame(width: 42, height: 42)
-
-                            Text("Stamp")
-                                .font(Tokens.Font.caption)
-
-                            Spacer()
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Selected \(selectedStamp.accessibilityLabel)")
-                    }
+                    PostcardSummaryTextView(
+                        message: backText,
+                        messageFont: selectedBackFont.uiFont(pointSize: selectedBackFontPointSize),
+                        messageColor: UIColor(Color(hex: backTextColorHex))
+                    )
+                    .padding(.top, Tokens.Space.sm)
                 }
                 .foregroundStyle(Tokens.Color.chromeText)
             }

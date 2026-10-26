@@ -31,6 +31,11 @@ struct PostcardSurfaceView: View {
 
     var body: some View {
         VStack(spacing: 10) {
+            Text("Tap postcard to flip")
+                .font(.system(size: 10, weight: .regular, design: .default))
+                .foregroundStyle(Tokens.Color.chromeText)
+                .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .leading)
+
             PostcardFlipView(angle: side == .front ? 0 : 180) {
                 PostcardFrontView(
                     card: card,
@@ -48,12 +53,9 @@ struct PostcardSurfaceView: View {
                 .accessibilityLabel(side == .front ? "Postcard front" : "Postcard back")
                 .accessibilityHint("Tap to show the other side")
 
-            Text(side == .front ? "Front" : "Back")
-                .font(Tokens.Font.caption)
-                .foregroundStyle(Tokens.Color.chromeText)
-
             metadata
                 .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .leading)
+                .padding(.top, Tokens.Space.sm)
         }
         .frame(maxWidth: .infinity)
     }
@@ -61,15 +63,20 @@ struct PostcardSurfaceView: View {
     @ViewBuilder
     private var metadata: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let location = card.locationLabel?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !location.isEmpty {
-                Text("Place: \(location)")
+            let title = card.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !title.isEmpty {
+                Text("Title: \(title)")
             }
 
-            Text("Created \(card.createdAt.formatted(date: .abbreviated, time: .omitted))")
+            Text("Postmarked: \(card.createdAt.formatted(date: .abbreviated, time: .shortened))")
 
             if let date = card.unlockDate {
-                Text("Unlocked \(date.formatted(date: .abbreviated, time: .shortened))")
+                Text("Delivered: \(date.formatted(date: .abbreviated, time: .shortened))")
+            }
+
+            if let location = card.locationLabel?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !location.isEmpty {
+                Text("Sent from: \(location)")
             }
         }
         .font(Tokens.Font.caption)

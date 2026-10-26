@@ -1,10 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Read-only summary text that fills the column beside the postcard preview,
-/// then continues at full width below the preview.
+/// Full-width message below the photo and stamp previews.
 struct PostcardSummaryTextView: UIViewRepresentable {
-    let title: String
     let message: String
     let messageFont: UIFont
     let messageColor: UIColor
@@ -30,22 +28,8 @@ struct PostcardSummaryTextView: UIViewRepresentable {
     private var attributedText: NSAttributedString {
         let result = NSMutableAttributedString()
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineBreakMode = .byCharWrapping
-
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedTitle.isEmpty {
-            let titleFont = UIFont(name: "BodoniModa9pt-Regular", size: 17)
-                ?? UIFont.preferredFont(forTextStyle: .headline)
-            result.append(NSAttributedString(
-                string: trimmedTitle,
-                attributes: [
-                    .font: titleFont,
-                    .foregroundColor: UIColor(Tokens.Color.chromeText),
-                    .paragraphStyle: paragraphStyle
-                ]
-            ))
-            result.append(NSAttributedString(string: "\n\n"))
-        }
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        paragraphStyle.hyphenationFactor = 0
 
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         result.append(NSAttributedString(
@@ -63,10 +47,6 @@ struct PostcardSummaryTextView: UIViewRepresentable {
 }
 
 final class PostcardSummaryFlowView: UIView {
-    private static let columnSpacing: CGFloat = 16
-    private static let bottomSpacing: CGFloat = 12
-
-    private let sideTextView = PostcardSummaryFlowView.makeTextView()
     private let bottomTextView = PostcardSummaryFlowView.makeTextView()
 
     var attributedText = NSAttributedString() {
@@ -79,7 +59,6 @@ final class PostcardSummaryFlowView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
-        addSubview(sideTextView)
         addSubview(bottomTextView)
     }
 
@@ -103,58 +82,15 @@ final class PostcardSummaryFlowView: UIView {
     private func layoutText(for width: CGFloat) -> CGFloat {
         guard width > 0 else { return 0 }
 
-        let previewWidth = max((width - Self.columnSpacing) / 2, 0)
-        let previewHeight = previewWidth / PostcardCanvasMetrics.aspectRatio
-        let sideSize = CGSize(width: previewWidth, height: previewHeight)
-        let splitLocation = fittingCharacterCount(in: attributedText, size: sideSize)
-        let sideRange = NSRange(location: 0, length: splitLocation)
-        let bottomRange = NSRange(
-            location: splitLocation,
-            length: max(attributedText.length - splitLocation, 0)
-        )
-
-        sideTextView.attributedText = attributedText.attributedSubstring(from: sideRange)
-        sideTextView.frame = CGRect(
-            x: previewWidth + Self.columnSpacing,
-            y: 0,
-            width: previewWidth,
-            height: previewHeight
-        )
-
-        guard bottomRange.length > 0 else {
-            bottomTextView.attributedText = NSAttributedString()
-            bottomTextView.frame = .zero
-            return previewHeight
-        }
-
-        let remainingText = attributedText.attributedSubstring(from: bottomRange)
-        let bottomHeight = measuredHeight(of: remainingText, width: width)
-        bottomTextView.attributedText = remainingText
+        let bottomHeight = measuredHeight(of: attributedText, width: width)
+        bottomTextView.attributedText = attributedText
         bottomTextView.frame = CGRect(
             x: 0,
-            y: previewHeight + Self.bottomSpacing,
+            y: 0,
             width: width,
             height: bottomHeight
         )
-        return previewHeight + Self.bottomSpacing + bottomHeight
-    }
-
-    private func fittingCharacterCount(in text: NSAttributedString, size: CGSize) -> Int {
-        guard text.length > 0, size.width > 0, size.height > 0 else { return 0 }
-
-        let storage = NSTextStorage(attributedString: text)
-        let layoutManager = NSLayoutManager()
-        let container = makeTextContainer(size: size)
-        storage.addLayoutManager(layoutManager)
-        layoutManager.addTextContainer(container)
-        layoutManager.ensureLayout(for: container)
-
-        let glyphRange = layoutManager.glyphRange(for: container)
-        let characterRange = layoutManager.characterRange(
-            forGlyphRange: glyphRange,
-            actualGlyphRange: nil
-        )
-        return min(NSMaxRange(characterRange), text.length)
+        return bottomHeight
     }
 
     private func measuredHeight(of text: NSAttributedString, width: CGFloat) -> CGFloat {
@@ -172,7 +108,7 @@ final class PostcardSummaryFlowView: UIView {
     private func makeTextContainer(size: CGSize) -> NSTextContainer {
         let container = NSTextContainer(size: size)
         container.lineFragmentPadding = 0
-        container.lineBreakMode = .byCharWrapping
+        container.lineBreakMode = .byWordWrapping
         return container
     }
 
@@ -187,7 +123,7 @@ final class PostcardSummaryFlowView: UIView {
         textView.clipsToBounds = true
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        textView.textContainer.lineBreakMode = .byCharWrapping
+        textView.textContainer.lineBreakMode = .byWordWrapping
         return textView
     }
 }
