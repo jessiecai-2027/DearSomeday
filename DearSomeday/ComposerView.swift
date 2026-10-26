@@ -35,6 +35,14 @@ private struct TemplateCanvasFramePreferenceKey: PreferenceKey {
     }
 }
 
+private struct FontPickerAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect?
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
 private struct TemplatePickerAnchorPreferenceKey: PreferenceKey {
     static var defaultValue: CGRect?
 
@@ -78,6 +86,7 @@ struct ComposerView: View {
     @State private var selectedSlotID: String?
     @State private var templateCanvasFrame: CGRect = .zero
     @State private var isTemplatePickerPresented = false
+    @State private var isFontPickerPresented = false
     @State private var photoBarriersEnabled = true
 
     @State private var title = ""
@@ -168,6 +177,9 @@ struct ComposerView: View {
         .overlayPreferenceValue(StampPickerAnchorPreferenceKey.self) { anchor in
             stampPickerOverlay(anchor: anchor)
         }
+        .overlayPreferenceValue(FontPickerAnchorPreferenceKey.self) { anchor in
+            fontPickerOverlay(anchor: anchor)
+        }
         .interactiveDismissDisabled(isSealing)
         .onChange(of: pickerItems) { _, items in
             Task { await importPicked(items) }
@@ -230,7 +242,7 @@ struct ComposerView: View {
         .scrollContentBackground(.hidden)
         .background(.clear)
         .scrollDismissesKeyboard(.interactively)
-        .scrollDisabled(step == .template || isEditingPhotoCrop)
+        .scrollDisabled(step == .template || step == .back || isEditingPhotoCrop)
     }
 
     private var footer: some View {
@@ -763,18 +775,6 @@ struct ComposerView: View {
 
     private var backEditor: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Write the back")
-                .font(Tokens.Font.headline)
-
-            TextField("Title (optional)", text: $title)
-                .textFieldStyle(.roundedBorder)
-                .focused($focusedField, equals: .title)
-                .onChange(of: title) { _, new in
-                    if new.count > ComposerLogic.maxTitleLength {
-                        title = String(new.prefix(ComposerLogic.maxTitleLength))
-                    }
-                }
-
             ZStack(alignment: .topLeading) {
                 Image(hasPlacedStamp ? "PostcardBackBlank" : "PostcardBack")
                     .resizable()
@@ -889,6 +889,15 @@ struct ComposerView: View {
                 }
             }
             .clipped()
+            .overlay(alignment: .bottomTrailing) {
+                if messageHasNoMoreRoom {
+                    Text("No more room")
+                        .font(.system(size: 10, weight: .regular, design: .default))
+                        .foregroundStyle(.red)
+                        .padding(15)
+                        .allowsHitTesting(false)
+                }
+            }
             .shadow(
                 color: Tokens.Shadow.raised.color,
                 radius: Tokens.Shadow.raised.radius,
@@ -897,14 +906,6 @@ struct ComposerView: View {
             .frame(maxWidth: .infinity)
             .onPreferenceChange(PostcardCanvasSizePreferenceKey.self) {
                 backCanvasSize = $0
-            }
-
-            if messageHasNoMoreRoom {
-                Text("No more room")
-                    .font(Tokens.Font.caption)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: PostcardCanvasMetrics.maxWidth, alignment: .trailing)
-                    .frame(maxWidth: .infinity)
             }
 
             fontOptions
@@ -934,36 +935,47 @@ struct ComposerView: View {
 
     private var fontOptions: some View {
         VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: Tokens.Space.sm) {
             Text("Font")
+                .fixedSize()
 
-            ForEach(PostcardBackFont.allCases) { font in
-                Button {
-                    selectBackFont(font)
-                } label: {
-                    HStack {
-                        Text(font.name)
-                            .font(font.previewFont)
-                        Spacer()
-                        if backFontId == font.id {
-                            Image(systemName: "checkmark")
-                                .font(Tokens.Font.caption.weight(.bold))
-                        }
-                    }
-                    .foregroundStyle(Tokens.Color.chromeText)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(backFontId == font.id ? Color.blue.opacity(0.1) : Color(.secondarySystemBackground))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(backFontId == font.id ? .blue : .secondary.opacity(0.2), lineWidth: 1)
+            Button {
+                focusedField = nil
+                withAnimation(.easeOut(duration: 0.16)) {
+                    isFontPickerPresented.toggle()
+                }
+            } label: {
+                HStack {
+                    Text(selectedBackFont.name)
+                        .font(selectedBackFont.previewFont)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(Tokens.Font.caption.weight(.semibold))
+                }
+                .foregroundStyle(Tokens.Color.chromeText)
+                .padding(.horizontal, Tokens.Space.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                        .fill(Tokens.Color.paperCream.opacity(0.82))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+                        .stroke(Tokens.Color.chromeDivider, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: FontPickerAnchorPreferenceKey.self,
+                        value: proxy.frame(in: .named("composerRoot"))
                     )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(font.name)
+            }
+            .accessibilityLabel("Font")
+            .accessibilityValue(selectedBackFont.name)
             }
 
             if let fontSelectionMessage {
@@ -972,6 +984,76 @@ struct ComposerView: View {
                     .foregroundStyle(.red)
             }
         }
+    }
+
+    private func fontPickerOverlay(anchor: CGRect?) -> some View {
+        GeometryReader { proxy in
+            if isFontPickerPresented, step == .back, let sourceFrame = anchor {
+                let rowCount = CGFloat(PostcardBackFont.allCases.count)
+                let menuHeight: CGFloat = rowCount * 48 + max(0, rowCount - 1) * 8 + 16
+                let opensBelow = sourceFrame.maxY + 8 + menuHeight <= proxy.size.height
+
+                ZStack(alignment: .topLeading) {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isFontPickerPresented = false
+                            }
+                        }
+                        .accessibilityHidden(true)
+
+                    VStack(spacing: 8) {
+                        ForEach(PostcardBackFont.allCases) { font in
+                            fontPickerOption(font)
+                        }
+                    }
+                    .padding(8)
+                    .frame(width: sourceFrame.width)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Tokens.Radius.subtle))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.subtle)
+                            .stroke(Tokens.Color.chromeDivider, lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+                    .environment(\.colorScheme, .light)
+                    .offset(
+                        x: sourceFrame.minX,
+                        y: opensBelow ? sourceFrame.maxY + 8 : max(8, sourceFrame.minY - menuHeight - 8)
+                    )
+                    .transition(.opacity)
+                }
+            }
+        }
+    }
+
+    private func fontPickerOption(_ font: PostcardBackFont) -> some View {
+        let isSelected = backFontId == font.id
+        let shape = RoundedRectangle(cornerRadius: Tokens.Radius.subtle, style: .continuous)
+
+        return Button {
+            selectBackFont(font)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isFontPickerPresented = false
+            }
+        } label: {
+            HStack {
+                Text(font.name)
+                    .font(font.previewFont)
+                Spacer()
+            }
+            .foregroundStyle(Tokens.Color.chromeText)
+            .padding(.horizontal, Tokens.Space.sm)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(shape.fill(Tokens.Color.paperCream.opacity(0.72)))
+            .overlay(shape.stroke(
+                isSelected ? Color.blue : Tokens.Color.chromeDivider,
+                lineWidth: isSelected ? 3 : 1
+            ))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var selectedStamp: StampOption? {
@@ -1092,6 +1174,15 @@ struct ComposerView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Logistics")
                 .font(Tokens.Font.headline)
+
+            TextField("Title (optional)", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .title)
+                .onChange(of: title) { _, new in
+                    if new.count > ComposerLogic.maxTitleLength {
+                        title = String(new.prefix(ComposerLogic.maxTitleLength))
+                    }
+                }
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
