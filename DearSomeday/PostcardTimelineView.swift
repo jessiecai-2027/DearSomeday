@@ -759,7 +759,9 @@ private struct TimelineRowView: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
-                TimelineTitle(text: card.title.isEmpty ? "(untitled)" : card.title)
+                if !card.title.isEmpty {
+                    TimelineTitle(text: card.title)
+                }
                 Text(showsLockedFeedback ? "Still sealed until \(unlockText)" : "Unlock date: \(unlockText)")
                     .font(Tokens.Font.timelineDate)
                     .lineLimit(1)
@@ -870,7 +872,7 @@ private struct LockedDeleteConfirmView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Delete “\(card.title.isEmpty ? "(untitled)" : card.title)”?")
+            Text(card.title.isEmpty ? "Delete this postcard?" : "Delete “\(card.title)”?")
                 .font(Tokens.Font.headline)
                 .multilineTextAlignment(.center)
 

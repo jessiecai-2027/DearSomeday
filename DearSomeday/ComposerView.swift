@@ -276,7 +276,7 @@ struct ComposerView: View {
                         .foregroundStyle(Tokens.Color.chromeText)
                 }
             }
-            .padding()
+            .padding(step == .logistics ? 12 : 16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollContentBackground(.hidden)
@@ -1235,23 +1235,28 @@ struct ComposerView: View {
     // MARK: - Step 4: logistics
 
     private var logistics: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Logistics")
-                .font(Tokens.Font.headline)
-
-            TextField("Title (optional)", text: $title)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: Tokens.Space.sm) {
+                Text("Title")
+                    .fixedSize()
+                TextField("Optional", text: $title)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Title, optional")
                 .focused($focusedField, equals: .title)
                 .onChange(of: title) { _, new in
                     if new.count > ComposerLogic.maxTitleLength {
                         title = String(new.prefix(ComposerLogic.maxTitleLength))
                     }
                 }
+            }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    TextField("Place, optional", text: $locationLabel)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: Tokens.Space.sm) {
+                    Text("Location")
+                        .fixedSize()
+                    TextField("Optional", text: $locationLabel)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Location, optional")
                         .focused($focusedField, equals: .location)
 
                     Button {
@@ -1259,9 +1264,10 @@ struct ComposerView: View {
                     } label: {
                         Label("Current", systemImage: "location")
                             .font(Tokens.Font.button)
-                            .frame(height: 36)
+                            .frame(height: 28)
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .disabled(currentLocation.isRequesting)
                     .accessibilityLabel("Use Current Location")
                 }
@@ -1277,7 +1283,7 @@ struct ComposerView: View {
                 }
             }
 
-            DatePicker("Unlock", selection: $chosenDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+            DatePicker("Delivery date", selection: $chosenDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
 
             if let selectedTemplate {
                 VStack(alignment: .leading, spacing: 6) {

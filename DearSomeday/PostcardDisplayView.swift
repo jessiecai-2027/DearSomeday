@@ -103,9 +103,11 @@ struct PostcardDisplayView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(card.title.isEmpty ? "(untitled)" : card.title)
+                if !card.title.isEmpty {
+                Text(card.title)
                     .font(Tokens.Font.screenTitle)
                     .lineSpacing(-6)
+                }
 
                 PostcardSurfaceView(card: card, photosByID: photosByID, photosByOrder: photosByOrder)
             }
