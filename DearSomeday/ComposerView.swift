@@ -142,7 +142,8 @@ struct ComposerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .font(Tokens.Font.button)
+                        .font(.system(size: 14, weight: .medium))
+                        .controlSize(.small)
                         .disabled(isSealing)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
@@ -179,12 +180,12 @@ struct ComposerView: View {
     // MARK: - Layout
 
     private var stepHeader: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(Step.allCases, id: \.self) { item in
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     Text("\(item.rawValue + 1)")
                         .font(Tokens.Font.caption.weight(.semibold))
-                        .frame(width: 24, height: 24)
+                        .frame(width: 22, height: 22)
                         .background(Circle().fill(item.rawValue <= step.rawValue ? .blue : .gray.opacity(0.25)))
                         .foregroundStyle(Tokens.Color.chromeText)
                     Text(item.title)
@@ -194,7 +195,9 @@ struct ComposerView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding()
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     @ViewBuilder
@@ -224,7 +227,7 @@ struct ComposerView: View {
         .scrollContentBackground(.hidden)
         .background(.clear)
         .scrollDismissesKeyboard(.interactively)
-        .scrollDisabled(isEditingPhotoCrop)
+        .scrollDisabled(step == .template || isEditingPhotoCrop)
     }
 
     private var footer: some View {
@@ -248,7 +251,9 @@ struct ComposerView: View {
             .foregroundStyle(Tokens.Color.paperCream)
             .disabled(!canContinue || isSealing)
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
     }
 
     // MARK: - Step 1: photos
