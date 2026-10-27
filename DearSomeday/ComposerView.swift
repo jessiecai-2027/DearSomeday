@@ -1,14 +1,3 @@
-//
-//  ComposerView.swift
-//  DearSomeday
-//
-//  MVP postcard creation flow:
-//   1. Pick 1-6 photos
-//   2. Choose a ranked template and adjust photo crops inside slots
-//   3. Write the postcard back and choose text styling
-//   4. Add optional typed/current location, choose unlock date, seal locally
-//
-
 import SwiftUI
 import PhotosUI
 import UIKit
